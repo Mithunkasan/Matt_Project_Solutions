@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/* Enable class-based dark mode for Tailwind 4 */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #020617;
+    color-scheme: light;
+  }
+
+  .dark {
+    --background: #020617;
+    --foreground: #f8fafc;
+    color-scheme: dark;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-weight: 400;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
