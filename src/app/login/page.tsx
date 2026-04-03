@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { getProviders, getSession, signIn, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -37,7 +37,7 @@ function GoogleIcon() {
 const GOOGLE_CONFIG_MESSAGE =
   "Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and NEXTAUTH_URL in .env.";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [formLoading, setFormLoading] = useState<boolean>(false);
@@ -301,5 +301,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoginPageFallback() {
+  return <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors" />;
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

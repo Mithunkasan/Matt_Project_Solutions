@@ -23,7 +23,6 @@
 
 import { Search } from "lucide-react";
 import { AddProjectDialog } from "./AddProjectDialog";
-import { useAppStore } from "@/lib/store";
 import { Project } from "@/types";
 import { useSession } from "next-auth/react";
 
