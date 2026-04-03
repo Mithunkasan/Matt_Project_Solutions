@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import SessionProvider from "../components/dashboard/SessionProvider";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
@@ -15,13 +13,11 @@ export const metadata: Metadata = {
   keywords: "college projects, academic projects, engineering projects, final year projects, web development, python projects, AI projects, ML projects, blockchain projects, IoT projects, student project solutions, Matt Project Solutions",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
-
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body className={inter.className}>
@@ -31,7 +27,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SessionProvider session={session}>
+          <SessionProvider>
             {/* Fixed Navbar */}
             <Navbar />
 
