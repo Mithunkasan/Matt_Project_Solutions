@@ -1,0 +1,4 @@
+ALTER TABLE "users"
+ADD COLUMN "image" TEXT,
+ADD COLUMN "emailVerified" TIMESTAMP(3),
+ALTER COLUMN "password" DROP NOT NULL;

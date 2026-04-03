@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Suspense, useState, useEffect } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Building2, User, Calendar } from "lucide-react"
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Projectcard1 } from "@/components/projectcard1"
 import { Project, ClassSchedule } from "@/types"
 
-export default function BrowsePage() {
+function BrowsePageContent() {
   const searchParams = useSearchParams()
   const initialTab = (searchParams.get("tab") as "projects" | "classes") || "projects"
 
@@ -306,5 +306,21 @@ export default function BrowsePage() {
         }
       `}</style>
     </div>
+  )
+}
+
+function BrowsePageFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center transition-colors">
+      <LoadingSpinner />
+    </div>
+  )
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={<BrowsePageFallback />}>
+      <BrowsePageContent />
+    </Suspense>
   )
 }
