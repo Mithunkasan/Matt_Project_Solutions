@@ -7,7 +7,7 @@ import { MissionVisionSection } from "@/components/landing/MissionVisionSection"
 import { ServicesSection } from "@/components/landing/ServicesSection";
 import { DomainsSection } from "@/components/landing/DomainsSection";
 import { WhyChooseUsSection } from "@/components/landing/WhyChooseUsSection";
-import { ExperienceShowcase } from "@/components/landing/ExperienceShowcase";
+
 import { WhoWeServeSection } from "@/components/landing/WhoWeServeSection";
 import { ContactSection } from "@/components/landing/ContactSection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
