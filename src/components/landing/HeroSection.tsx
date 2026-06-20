@@ -20,7 +20,7 @@ export function HeroSection({ session }: HeroSectionProps) {
     }, []);
 
     return (
-        <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden transition-colors">
+        <section id="home" className="relative min-h-[90vh] flex items-center justify-center overflow-hidden transition-colors">
             {/* Video Background */}
             <div className="absolute inset-0 z-0 text-white">
                 <video
@@ -55,7 +55,7 @@ export function HeroSection({ session }: HeroSectionProps) {
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2, duration: 0.8 }}
-                        className="text-5xl md:text-8xl font-extrabold text-white mb-6 tracking-tight leading-[1.05]"
+                        className="text-4xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 tracking-tight leading-[1.05]"
                     >
                         Matt Project
                         <span className="text-[#b12222] drop-shadow-[0_0_15px_rgba(177,34,34,0.5)]"> Solutions</span>

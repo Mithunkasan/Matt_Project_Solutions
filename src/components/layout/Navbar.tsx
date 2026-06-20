@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
+import { ScrollProgressBar } from "./ScrollProgressBar";
 
 const AUTH_ROUTES = new Set([
   "/login",
@@ -85,104 +86,31 @@ function Brand() {
   );
 }
 
-function LoggedOutDesktop() {
+function NavLinks({ closeMobileMenu }: { closeMobileMenu?: () => void }) {
+  const links = [
+    { name: "Home", href: "/#home" },
+    { name: "About", href: "/#about" },
+    { name: "Service", href: "/#services" },
+    { name: "Contact", href: "/#contact" },
+  ];
+
   return (
-    <div className="flex items-center space-x-2">
-      <Link href="/login">
-        <Button
-          size="sm"
-          className="bg-[#12498b] hover:bg-[#0e3b6f] text-white"
+    <>
+      {links.map((link) => (
+        <Link
+          key={link.name}
+          href={link.href}
+          onClick={closeMobileMenu}
+          className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-[#12498b] dark:hover:text-blue-400 transition-colors"
         >
-          Login
-        </Button>
-      </Link>
-      <Link href="/register">
-        <Button
-          size="sm"
-          className="bg-[#b12222] hover:bg-[#911c1c] text-white"
-        >
-          Register
-        </Button>
-      </Link>
-    </div>
+          {link.name}
+        </Link>
+      ))}
+    </>
   );
 }
 
-function LoggedOutMobile({
-  closeMobileMenu,
-}: {
-  closeMobileMenu: () => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <Link href="/login" onClick={closeMobileMenu} className="block">
-        <Button
-          size="default"
-          className="w-full bg-[#12498b] hover:bg-[#0e3b6f] text-white"
-        >
-          Login
-        </Button>
-      </Link>
-      <Link href="/register" onClick={closeMobileMenu} className="block">
-        <Button
-          size="default"
-          className="w-full bg-[#b12222] hover:bg-[#911c1c] text-white"
-        >
-          Register
-        </Button>
-      </Link>
-    </div>
-  );
-}
 
-function PublicNavbar() {
-  const {
-    mobileMenuOpen,
-    setMobileMenuOpen,
-    closeMobileMenu,
-    mounted,
-    setTheme,
-    resolvedTheme,
-  } = useNavbarChrome();
-
-  return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Brand />
-
-          <div className="hidden md:flex items-center space-x-4">
-            <ThemeToggle mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
-            <LoggedOutDesktop />
-          </div>
-
-          <div className="flex md:hidden items-center space-x-2">
-            <ThemeToggle mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
-            <button
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? (
-                <X className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-              ) : (
-                <Menu className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-colors">
-            <div className="px-4 py-4 space-y-3">
-              <LoggedOutMobile closeMobileMenu={closeMobileMenu} />
-            </div>
-          </div>
-        )}
-      </div>
-    </nav>
-  );
-}
 
 function SessionNavbar() {
   const { data: session, status } = useSession();
@@ -202,7 +130,7 @@ function SessionNavbar() {
 
   if (status === "loading") {
     return (
-      <nav className="fixed top-0 left-0 w-full z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors">
+      <nav className="fixed top-10 left-0 w-full z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2 sm:space-x-3">
@@ -220,20 +148,22 @@ function SessionNavbar() {
             <div className="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
           </div>
         </div>
+        <ScrollProgressBar />
       </nav>
     );
   }
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors">
+    <nav className="fixed top-10 left-0 w-full z-50 bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Brand />
 
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-8">
+            {!session && <NavLinks />}
             <ThemeToggle mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
 
-            {session ? (
+            {session && (
               <>
                 <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg">
                   <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -251,8 +181,6 @@ function SessionNavbar() {
                   <span>Logout</span>
                 </Button>
               </>
-            ) : (
-              <LoggedOutDesktop />
             )}
           </div>
 
@@ -274,8 +202,9 @@ function SessionNavbar() {
 
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-colors">
-            <div className="px-4 py-4 space-y-3">
-              {session ? (
+            <div className="px-4 py-4 flex flex-col space-y-4">
+              {!session && <NavLinks closeMobileMenu={closeMobileMenu} />}
+              {session && (
                 <>
                   <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 px-3 py-3 rounded-lg">
                     <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
@@ -293,8 +222,6 @@ function SessionNavbar() {
                     <span>Logout</span>
                   </Button>
                 </>
-              ) : (
-                <LoggedOutMobile closeMobileMenu={closeMobileMenu} />
               )}
             </div>
           </div>
@@ -308,7 +235,7 @@ export function Navbar() {
   const pathname = usePathname();
 
   if (AUTH_ROUTES.has(pathname)) {
-    return <PublicNavbar />;
+    return null;
   }
 
   return <SessionNavbar />;

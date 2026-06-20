@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export function MissionVisionSection() {
     return (
-        <section className="py-24 bg-slate-50 dark:bg-gray-900 overflow-hidden transition-colors">
+        <section id="about" className="py-24 bg-slate-50 dark:bg-gray-900 overflow-hidden transition-colors">
             <div className="container mx-auto px-4">
                 <div className="flex flex-col lg:flex-row items-center gap-16">
                     <motion.div
