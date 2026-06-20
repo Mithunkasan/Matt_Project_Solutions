@@ -35,8 +35,7 @@ export default function AdminPortal() {
       } else {
         const session = await getSession();
         if (session) {
-          router.push("/home");
-          router.refresh();
+          window.location.href = "/home";
         }
       }
     } catch {
