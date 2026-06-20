@@ -3,31 +3,22 @@ generator client {
   output   = "../node_modules/.prisma/client"
 }
 
-
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-
-}
-
-enum Role {
-  ADMIN
-  STUDENT
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String
-  image         String?
-  emailVerified DateTime?
-  password      String?
-  role          Role     @default(STUDENT)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  accounts      Account[]
-  sessions      Session[]
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  role      Role      @default(STUDENT)
+  accounts  Account[]
+  sessions  Session[]
 
   @@map("users")
 }
@@ -38,15 +29,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -57,8 +47,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -80,7 +69,6 @@ model Project {
   handler         String
   team            String
   student         String
-  studentEmail    String?
   date            DateTime
   amountPaid      Float
   finalAmount     Float
@@ -88,23 +76,46 @@ model Project {
   status          String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  studentEmail    String?
 
   @@map("projects")
 }
 
 model ClassSchedule {
-  id         String   @id @default(cuid())
-  project    String
+  id           String   @id @default(cuid())
+  project      String
+  day          String
+  date         DateTime
+  time         String
+  faculty      String
+  location     String
+  department   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   studentEmail String?
-  day        String
-  date       DateTime
-  time       String
-  faculty    String
-  location   String
-  department String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 
   @@map("class_schedules")
 }
 
+model workshops {
+  id          String   @id
+  title       String
+  description String?
+  college     String
+  department  String
+  organizer   String
+  team        String
+  date        DateTime
+  duration    String
+  location    String
+  attendees   Int
+  status      String
+  fee         Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}

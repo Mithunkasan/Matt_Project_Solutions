@@ -4,6 +4,9 @@
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   :root {
     --background: #ffffff;
     --foreground: #020617;
