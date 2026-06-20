@@ -153,11 +153,7 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-const isGoogleEmail = (email: string): boolean => {
-  const googleDomains = ['gmail.com', 'googlemail.com', 'google.com'];
-  const domain = email.split('@')[1]?.toLowerCase();
-  return googleDomains.includes(domain);
-};
+
 
 const isDisposableEmail = (email: string): boolean => {
   const disposableDomains = [
@@ -259,8 +255,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        message: "User created successfully",
-        isGoogleEmail: isGoogleEmail(email)
+        message: "User created successfully"
       },
       { status: 201 }
     );

@@ -19,7 +19,6 @@ export default function RegisterPage() {
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [emailValidation, setEmailValidation] = useState({
     isValid: false,
-    isGoogle: false,
     message: ""
   });
   const router = useRouter();
@@ -31,14 +30,11 @@ export default function RegisterPage() {
     if (!emailRegex.test(email)) {
       return {
         isValid: false,
-        isGoogle: false,
         message: "Please enter a valid email address"
       };
     }
 
-    const googleDomains = ['gmail.com', 'googlemail.com', 'google.com'];
     const domain = email.split('@')[1]?.toLowerCase();
-    const isGoogleEmail = googleDomains.includes(domain);
 
     const disposableDomains = [
       'tempmail.com', 'guerrillamail.com', 'mailinator.com', '10minutemail.com',
@@ -49,15 +45,13 @@ export default function RegisterPage() {
     if (disposableDomains.some(disposable => domain?.includes(disposable))) {
       return {
         isValid: false,
-        isGoogle: false,
         message: "Temporary email addresses are not allowed"
       };
     }
 
     return {
       isValid: true,
-      isGoogle: isGoogleEmail,
-      message: isGoogleEmail ? "Valid Google email" : "Valid email"
+      message: "Valid email"
     };
   };
 

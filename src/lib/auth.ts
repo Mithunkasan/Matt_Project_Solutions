@@ -1,35 +1,16 @@
 import { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
+
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
-const googleAuthConfigured = Boolean(googleClientId && googleClientSecret);
+
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    ...(googleAuthConfigured
-      ? [
-          GoogleProvider({
-            clientId: googleClientId!,
-            clientSecret: googleClientSecret!,
-            allowDangerousEmailAccountLinking: true,
-            profile(profile) {
-              return {
-                id: profile.sub,
-                name: profile.name ?? profile.email?.split("@")[0] ?? "Student",
-                email: profile.email,
-                image: profile.picture,
-                role: "STUDENT",
-              };
-            },
-          }),
-        ]
-      : []),
+
     CredentialsProvider({
       name: "credentials",
       credentials: {
