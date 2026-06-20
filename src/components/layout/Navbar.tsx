@@ -15,6 +15,7 @@ const AUTH_ROUTES = new Set([
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/admin",
 ]);
 
 function useNavbarChrome() {
