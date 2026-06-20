@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Phone, Mail, MapPin, Instagram, Twitter, Facebook, Linkedin } from "lucide-react";
+import { Phone, Mail, Instagram, Twitter, Facebook, Linkedin } from "lucide-react";
 
 export function LandingFooter() {
     return (
