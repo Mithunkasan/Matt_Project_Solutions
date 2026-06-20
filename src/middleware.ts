@@ -58,7 +58,6 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/home/:path*",
     "/browse/:path*",
     "/api/projects/:path*",
     "/api/classes/:path*",
