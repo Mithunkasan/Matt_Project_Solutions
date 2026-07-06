@@ -37,6 +37,15 @@
 
 
 
+export interface ProjectFile {
+  id: string
+  projectId: string
+  name: string
+  fileName: string
+  fileUrl: string
+  uploadedAt: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -53,6 +62,7 @@ export interface Project {
   status: 'pending' | 'ongoing' | 'completed'
   createdAt?: string
   updatedAt?: string
+  files?: ProjectFile[]
 }
 
 export interface ClassSchedule {
