@@ -5,6 +5,7 @@ import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 
 
 
@@ -62,7 +63,16 @@ function LoginPageContent() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center px-4 py-8 sm:py-12 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center px-4 py-8 sm:py-12 transition-colors relative">
+      {/* Back Button */}
+      <Link
+        href="/"
+        className="absolute top-4 left-4 sm:top-8 sm:left-8 flex items-center space-x-2 text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md z-50"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back to Home</span>
+      </Link>
+
       <div className="w-full max-w-5xl bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border dark:border-gray-800 transition-colors">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
           <div className="flex flex-col justify-center items-center px-8 sm:px-12 py-16 sm:py-24 text-center bg-[#12498b] dark:bg-slate-900 relative overflow-hidden">

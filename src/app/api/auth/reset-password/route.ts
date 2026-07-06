@@ -1,7 +1,6 @@
-// app/api/auth/reset-password/route.ts
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { resetTokens } from '../forgot-password/route';
+import { resetTokens } from '@/lib/resetTokens';
 
 export async function POST(request: Request) {
   try {

@@ -2,9 +2,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { sendPasswordResetEmail } from '@/lib/nodemailer';
-
-// In-memory token storage (use database in production)
-const resetTokens = new Map();
+import { resetTokens } from '@/lib/resetTokens';
 
 export async function POST(request: Request) {
   try {
@@ -77,19 +75,4 @@ export async function POST(request: Request) {
     );
   }
 }
-
-// Helper to check if token is valid
-export function isValidToken(token: string) {
-  const tokenData = resetTokens.get(token);
-  if (!tokenData) return false;
-
-  if (Date.now() > tokenData.expires) {
-    resetTokens.delete(token);
-    return false;
-  }
-
-  return true;
-}
-
-// Export for use in reset-password route
-export { resetTokens };
+

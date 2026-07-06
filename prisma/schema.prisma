@@ -62,7 +62,7 @@ model VerificationToken {
 }
 
 model Project {
-  id              String   @id @default(cuid())
+  id              String        @id @default(cuid())
   name            String
   college         String
   department      String
@@ -74,9 +74,10 @@ model Project {
   finalAmount     Float
   paymentProgress Int
   status          String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   studentEmail    String?
+  files           ProjectFile[]
 
   @@map("projects")
 }
@@ -93,6 +94,8 @@ model ClassSchedule {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   studentEmail String?
+  courseId     String?
+  course       Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
   @@map("class_schedules")
 }
@@ -119,3 +122,131 @@ enum Role {
   ADMIN
   STUDENT
 }
+
+model InternshipApplication {
+  id          String   @id @default(cuid())
+  fullName    String
+  collegeName String
+  yearOfStudy String
+  email       String
+  phoneNumber String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("internship_applications")
+}
+
+model ImportantLink {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("important_links")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  month     String
+  day       String
+  href      String   @default("/browse")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("announcements")
+}
+
+model Offer {
+  id        String   @id @default(cuid())
+  text      String
+  link      String?  @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("offers")
+}
+
+model ProjectFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  name       String   // e.g. "Proposal", "Synopsis", "Source Code", etc.
+  fileName   String
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_files")
+}
+
+model Course {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  department  String
+  duration    String
+  faculty     String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  enrollments CourseEnrollment[]
+  schedules   ClassSchedule[]
+
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  id           String   @id @default(cuid())
+  courseId     String
+  studentEmail String
+  studentName  String
+  progress     Int      @default(0)
+  status       String   @default("Active") // Active, Completed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentEmail])
+  @@map("course_enrollments")
+}
+
+model ChatMessage {
+  id           String   @id @default(cuid())
+  studentEmail String
+  senderRole   Role     // ADMIN or STUDENT
+  message      String
+  fileUrl      String?
+  fileName     String?
+  fileType     String?  // "image", "audio", "document" etc.
+  createdAt    DateTime @default(now())
+
+  @@map("chat_messages")
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  studentEmail String
+  title        String
+  message      String
+  type         String   // STATUS, PAYMENT, MEETING, VIVA, FILE
+  read         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model Meeting {
+  id           String   @id @default(cuid())
+  studentEmail String
+  title        String
+  date         DateTime
+  time         String
+  meetLink     String
+  type         String   // PROJECT or COURSE
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("meetings")
+}
+
+

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -21,6 +22,12 @@ export default function RegisterPage() {
     isValid: false,
     message: ""
   });
+  
+  // Custom Verification States
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [verificationSuccessMessage, setVerificationSuccessMessage] = useState("");
+  
   const router = useRouter();
 
   // Enhanced email validation function
@@ -88,8 +95,48 @@ export default function RegisterPage() {
     }
   };
 
+  const handleVerifyEmail = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCheckingEmail(true);
+    setError("");
+    setVerificationSuccessMessage("");
+
+    const emailVal = validateEmail(formData.email);
+    if (!emailVal.isValid) {
+      setError(emailVal.message);
+      setCheckingEmail(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/validate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.allowed) {
+        setEmailVerified(true);
+        setVerificationSuccessMessage(data.message);
+        setError("");
+      } else {
+        setError(data.error || data.message || "This email is not authorized for registration.");
+      }
+    } catch {
+      setError("Network error. Please check your internet connection.");
+    } finally {
+      setCheckingEmail(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!emailVerified) {
+      setError("Please verify your email address first.");
+      return;
+    }
     setLoading(true);
     setError("");
 
@@ -140,7 +187,16 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center px-4 py-8 sm:py-12 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center px-4 py-8 sm:py-12 transition-colors relative">
+      {/* Back Button */}
+      <Link
+        href="/"
+        className="absolute top-4 left-4 sm:top-8 sm:left-8 flex items-center space-x-2 text-xs sm:text-sm font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md z-50"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back to Home</span>
+      </Link>
+
       <div className="w-full max-w-5xl bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border dark:border-gray-800 transition-colors">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
 
@@ -186,13 +242,16 @@ export default function RegisterPage() {
                 </div>
               )}
 
+              {verificationSuccessMessage && (
+                <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 text-blue-700 dark:text-blue-400 px-4 py-3 rounded text-sm">
+                  <p className="font-semibold">Verified</p>
+                  <p>{verificationSuccessMessage}</p>
+                </div>
+              )}
+
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
-                    <input name="name" type="text" required value={formData.name} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="John Doe" />
-                  </div>
-
+                  {/* Email address field */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 flex justify-between">
                       Email address
@@ -202,37 +261,66 @@ export default function RegisterPage() {
                         </span>
                       )}
                     </label>
-                    <input name="email" type="email" required value={formData.email} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="john@example.com" />
+                    <input 
+                      name="email" 
+                      type="email" 
+                      required 
+                      disabled={emailVerified} 
+                      value={formData.email} 
+                      onChange={handleChange} 
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 dark:disabled:bg-gray-800" 
+                      placeholder="john@example.com" 
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
-                      <input name="password" type="password" required value={formData.password} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="••••••••" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Confirm</label>
-                      <input name="confirmPassword" type="password" required value={formData.confirmPassword} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="••••••••" />
-                    </div>
-                  </div>
+                  {!emailVerified ? (
+                    /* Step 1: Verify Email Button */
+                    <button
+                      type="button"
+                      onClick={handleVerifyEmail}
+                      disabled={checkingEmail || !emailValidation.isValid}
+                      className="w-full py-3.5 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center mt-4 bg-[#12498b] hover:bg-[#0f3d75] shadow-xl shadow-blue-500/10 disabled:opacity-50"
+                    >
+                      {checkingEmail ? "Verifying..." : "Verify Email"}
+                    </button>
+                  ) : (
+                    /* Step 2: Registration Fields */
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
+                        <input name="name" type="text" required value={formData.name} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="John Doe" />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
+                          <input name="password" type="password" required value={formData.password} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="••••••••" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Confirm Password</label>
+                          <input name="confirmPassword" type="password" required value={formData.confirmPassword} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-[#12498b] transition-all outline-none" placeholder="••••••••" />
+                        </div>
+                      </div>
+
+                      {passwordErrors.length > 0 && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-xl text-[11px] text-red-600 dark:text-red-400 leading-relaxed animate-shake">
+                          <p className="font-bold mb-1">Improve password:</p>
+                          <ul className="grid grid-cols-2 gap-x-2">
+                            {passwordErrors.map((e, i) => <li key={i}>• {e}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3.5 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center mt-6 bg-[#b12222] hover:bg-[#c1353d] dark:bg-red-600 dark:hover:bg-red-700 shadow-xl shadow-red-500/10 disabled:opacity-50"
+                      >
+                        {loading ? "Creating Account..." : "Create Account"}
+                      </button>
+                    </>
+                  )}
                 </div>
-
-                {passwordErrors.length > 0 && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/30 rounded-xl text-[11px] text-red-600 dark:text-red-400 leading-relaxed">
-                    <p className="font-bold mb-1">Improve password:</p>
-                    <ul className="grid grid-cols-2 gap-x-2">
-                      {passwordErrors.map((e, i) => <li key={i}>• {e}</li>)}
-                    </ul>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center mt-6 bg-[#b12222] hover:bg-[#c1353d] dark:bg-red-600 dark:hover:bg-red-700 shadow-xl shadow-red-500/10 disabled:opacity-50"
-                >
-                  {loading ? "Creating Account..." : "Create Account"}
-                </button>
               </form>
 
               <p className="text-center text-[10px] text-gray-400 mt-8">
