@@ -8,7 +8,7 @@ const TWITTER_URL = "https://twitter.com";
 const YOUTUBE_URL = "https://youtube.com";
 const LINKEDIN_URL = "https://linkedin.com";
 const WHATSAPP_URL = "https://whatsapp.com";
-const MAP_URL = "#map"; // User will provide map URL later
+const MAP_URL = "https://maps.app.goo.gl/xhmiBRmrWbQkPg2x8"; // User will provide map URL later
 
 interface UtilityHeaderProps {
   language: "en" | "ta";
@@ -49,7 +49,6 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export function UtilityHeader({
   language,
-  setLanguage,
   fontSize,
   setFontSize,
   themeColor,
@@ -100,7 +99,7 @@ export function UtilityHeader({
             <Linkedin className="w-5 h-5 fill-current" />
           </a>
           <a
-            href={"https://wa.me/916379721546"}
+            href={"https://wa.me/919791658349"}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[#25D366] hover:text-[#20ba56] hover:scale-108 transition-all"
@@ -143,13 +142,6 @@ export function UtilityHeader({
 
         {/* Right Side: Accessibility & Theme */}
         <div className="flex items-center space-x-4 flex-wrap justify-center">
-          {/* Language Switcher */}
-          <button
-            onClick={() => setLanguage(language === "en" ? "ta" : "en")}
-            className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-white border border-gray-200 rounded shadow-xs text-gray-700 hover:bg-gray-100 hover:text-black transition-colors cursor-pointer select-none"
-          >
-            {language === "en" ? "தமிழ்" : "English"}
-          </button>
 
           {/* Font Size Adjusters */}
           <div className="flex items-center bg-white rounded border border-gray-200 shadow-xs overflow-hidden">
