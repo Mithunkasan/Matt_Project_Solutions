@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           return {
             studentEmail: t.studentEmail,
             studentName: user?.name || "Registered Student",
-            lastMessageAt: t._max.createdAt
+            lastMessageAt: t._max.createdAt || new Date(0)
           };
         });
 
