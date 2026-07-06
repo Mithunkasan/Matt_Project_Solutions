@@ -166,6 +166,12 @@ function SessionNavbar() {
 
             {session && (
               <>
+                <Link
+                  href="/"
+                  className="text-sm font-bold text-[#12498b] dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors mr-2"
+                >
+                  View Landing Page
+                </Link>
                 <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg">
                   <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -207,6 +213,13 @@ function SessionNavbar() {
               {!session && <NavLinks closeMobileMenu={closeMobileMenu} />}
               {session && (
                 <>
+                  <Link
+                    href="/"
+                    onClick={closeMobileMenu}
+                    className="w-full flex items-center justify-center py-2 text-sm font-bold text-[#12498b] dark:text-blue-400 hover:underline"
+                  >
+                    View Landing Page
+                  </Link>
                   <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 px-3 py-3 rounded-lg">
                     <User className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">

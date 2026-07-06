@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import SessionProvider from "../components/dashboard/SessionProvider";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
-import { ScrollingMarquee } from "@/components/layout/ScrollingMarquee";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { LayoutWrapper } from "@/components/layout/LayoutWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -70,14 +69,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SessionProvider>
-            {/* Fixed Navbar & Info Bar */}
-            <Navbar />
-            <ScrollingMarquee />
-
-            {/* Main Content with padding to account for fixed navbar + marquee */}
-            <main className="min-h-screen pt-28">
+            <LayoutWrapper>
               {children}
-            </main>
+            </LayoutWrapper>
           </SessionProvider>
         </ThemeProvider>
       </body>

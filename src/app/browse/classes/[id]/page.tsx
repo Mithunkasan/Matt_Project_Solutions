@@ -27,8 +27,8 @@ async function getPublicClassesAbsolute() {
   return res.json();
 }
 
-export default async function ClassDetailsPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function ClassDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const classes = await getPublicClassesAbsolute();
   const classItem = Array.isArray(classes) ? classes.find((c: { id: string | number }) => String(c.id) === String(id)) : null;
 

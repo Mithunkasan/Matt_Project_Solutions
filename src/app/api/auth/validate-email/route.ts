@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// This is a simplified version - for production, use a proper email validation service
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
@@ -12,42 +12,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Basic validation - in production, you would use a service like:
-    // - ZeroBounce
-    // - Hunter.io
-    // - NeverBounce
-    // - MailboxValidator
+    const cleanEmail = email.toLowerCase().trim();
 
-    const domain = email.split('@')[1]?.toLowerCase();
-    
-    // Simple domain existence check (very basic)
-    const isValidDomain = await checkDomainExistence(domain);
-    
+    // 1. Check if the user already exists in the users table
+    const existingUser = await prisma.user.findUnique({
+      where: { email: cleanEmail }
+    });
+
+    if (existingUser) {
+      return NextResponse.json({
+        email,
+        allowed: false,
+        error: "This email is already registered. Please login instead."
+      });
+    }
+
+    // 2. Check if the email exists in Projects
+    const projectCount = await prisma.project.count({
+      where: { studentEmail: cleanEmail }
+    });
+
+    // 3. Check if the email exists in CourseEnrollments
+    const enrollmentCount = await prisma.courseEnrollment.count({
+      where: { studentEmail: cleanEmail }
+    });
+
+    // 4. Check if the email exists in ClassSchedules (as fallback)
+    const scheduleCount = await prisma.classSchedule.count({
+      where: { studentEmail: cleanEmail }
+    });
+
+    const isAllowed = projectCount > 0 || enrollmentCount > 0 || scheduleCount > 0;
+
     return NextResponse.json({
       email,
-      exists: isValidDomain,
-      message: isValidDomain ? "Email domain is valid" : "Email domain may not exist"
+      allowed: isAllowed,
+      message: isAllowed 
+        ? "Email verification successful! You may now complete your registration." 
+        : "This email is not registered under any Project or Course by the Admin. Please contact the administrator to get assigned first."
     });
 
   } catch (error) {
-    console.error("Email validation error:", error);
+    console.error("Email registration check error:", error);
     return NextResponse.json(
-      { error: "Email validation service unavailable" },
+      { error: "Internal server error during email verification" },
       { status: 500 }
     );
-  }
-}
-
-// Basic domain existence check
-async function checkDomainExistence(domain: string): Promise<boolean> {
-  try {
-    // This is a very basic check - in production, use proper email validation services
-    const response = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
-    const data = await response.json();
-    
-    return data.Answer && data.Answer.length > 0;
-  } catch (error) {
-    console.error("Domain check error:", error);
-    return true; // Fallback to true to avoid blocking legitimate emails
   }
 }

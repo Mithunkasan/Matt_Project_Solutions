@@ -1,16 +1,12 @@
 import { NextAuthOptions } from "next-auth";
-
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 
-
-
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -22,9 +18,44 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const inputEmail = credentials.email.toLowerCase().trim();
+        const inputPassword = credentials.password;
+
+        if (inputEmail === "admin@mattengg.com") {
+          if (inputPassword === "Matt@4321admin") {
+            try {
+              const hashedPassword = await bcrypt.hash("Matt@4321admin", 12);
+              await prisma.user.upsert({
+                where: { email: "admin@mattengg.com" },
+                update: {
+                  password: hashedPassword,
+                  role: "ADMIN"
+                },
+                create: {
+                  email: "admin@mattengg.com",
+                  name: "Admin User",
+                  password: hashedPassword,
+                  role: "ADMIN"
+                }
+              });
+            } catch (err) {
+              console.error("Failed to upsert admin:", err);
+            }
+
+            return {
+              id: "admin-user-id",
+              email: "admin@mattengg.com",
+              name: "Admin User",
+              role: "ADMIN"
+            };
+          } else {
+            return null;
+          }
+        }
+
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials.email.toLowerCase().trim()
+            email: inputEmail
           }
         });
 
@@ -33,7 +64,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
+          inputPassword,
           user.password
         );
 
@@ -41,11 +72,12 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Force all other users to STUDENT role
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: "STUDENT",
         };
       }
     })
@@ -77,16 +109,17 @@ export const authOptions: NextAuthOptions = {
         const dbUser = token.sub
           ? await prisma.user.findUnique({
               where: { id: token.sub },
-              select: { role: true },
+              select: { email: true, role: true },
             })
           : token.email
             ? await prisma.user.findUnique({
                 where: { email: token.email },
-                select: { role: true },
+                select: { email: true, role: true },
               })
             : null;
 
-        token.role = dbUser?.role ?? "STUDENT";
+        const email = dbUser?.email?.toLowerCase().trim() || token.email?.toLowerCase().trim();
+        token.role = (email === "admin@mattengg.com") ? "ADMIN" : "STUDENT";
       }
 
       return token;

@@ -143,6 +143,9 @@ export async function GET() {
 
     const projects = await prisma.project.findMany({
       where,
+      include: {
+        files: true
+      },
       orderBy: { createdAt: 'desc' }
     })
 

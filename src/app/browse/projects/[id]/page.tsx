@@ -25,8 +25,8 @@ async function getPublicProjectsAbsolute() {
   return res.json();
 }
 
-export default async function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function ProjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const projects = await getPublicProjectsAbsolute();
   const project = Array.isArray(projects) ? projects.find((p: { id: string | number }) => String(p.id) === String(id)) : null;
 

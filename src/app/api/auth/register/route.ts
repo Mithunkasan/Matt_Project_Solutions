@@ -169,7 +169,7 @@ const isDisposableEmail = (email: string): boolean => {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, role } = await request.json();
+    const { name, email, password } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         email: email.toLowerCase().trim(),
         password: hashedPassword,
-        role: (role || 'STUDENT') as Role,
+        role: Role.STUDENT,
       },
     });
 

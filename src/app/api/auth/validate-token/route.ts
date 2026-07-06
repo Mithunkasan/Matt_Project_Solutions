@@ -1,6 +1,5 @@
-// app/api/auth/validate-token/route.ts
 import { NextResponse } from 'next/server';
-import { resetTokens } from '../forgot-password/route';
+import { resetTokens } from '@/lib/resetTokens';
 
 export async function GET(request: Request) {
   try {
