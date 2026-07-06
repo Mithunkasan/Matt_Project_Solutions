@@ -131,19 +131,25 @@ export function IdentityHeader({ themeColor }: IdentityHeaderProps) {
         {/* Right Side: QR Code + 12 Years Celebratory Badge */}
         <div className="flex flex-col sm:flex-row items-center gap-6 flex-shrink-0">
           {/* Internship QR Code */}
-          <Link
-            href="/internship-register"
-            className="flex flex-col items-center group text-center"
-          >
-            <QRCodeWithLogo
-              text={qrUrl || "https://mattprojects.com/internship-register"}
-              logoUrl="/logo.png"
-              size={84}
-            />
-            <span className="text-[8px] font-bold text-gray-500 group-hover:text-blue-600 dark:text-gray-400 uppercase tracking-widest mt-1.5 transition-colors">
-              Scan / Click for Internship
-            </span>
-          </Link>
+          {qrUrl ? (
+            <Link
+              href="/internship-register"
+              className="flex flex-col items-center group text-center"
+            >
+              <QRCodeWithLogo
+                text={qrUrl}
+                logoUrl="/logo.png"
+                size={84}
+              />
+              <span className="text-[8px] font-bold text-gray-500 group-hover:text-blue-600 dark:text-gray-400 uppercase tracking-widest mt-1.5 transition-colors">
+                Scan / Click for Internship
+              </span>
+            </Link>
+          ) : (
+            <div className="w-[84px] h-[100px] flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-[#12498b] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
 
           {/* 12 Years Celebratory Badge */}
           <div className="border-2 border-[#12498b]/20 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg p-2 flex items-center space-x-3 max-w-[280px]">
