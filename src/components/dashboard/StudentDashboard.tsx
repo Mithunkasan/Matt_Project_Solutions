@@ -260,7 +260,9 @@ export function StudentDashboard({
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setRecording(false);
-      clearInterval(recordingTimerRef.current);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
     }
   };
 
