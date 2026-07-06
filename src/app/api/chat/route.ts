@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = studentEmail.toLowerCase().trim();
-    const role = session.user.role; // ADMIN or STUDENT
+    const role = session.user.role as "ADMIN" | "STUDENT"; // ADMIN or STUDENT
 
     const chatMessage = await prisma.chatMessage.create({
       data: {
