@@ -35,7 +35,7 @@ interface CourseEnrollment {
 interface CourseItem {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   department: string;
   duration: string;
   faculty: string;
