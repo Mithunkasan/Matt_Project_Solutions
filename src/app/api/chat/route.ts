@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           return {
             studentEmail: t.studentEmail,
             studentName: user?.name || "Registered Student",
-            lastMessageAt: t._max.createdAt
+            lastMessageAt: t._max.createdAt || new Date(0)
           };
         });
 
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = studentEmail.toLowerCase().trim();
-    const role = session.user.role; // ADMIN or STUDENT
+    const role = session.user.role as "ADMIN" | "STUDENT"; // ADMIN or STUDENT
 
     const chatMessage = await prisma.chatMessage.create({
       data: {
