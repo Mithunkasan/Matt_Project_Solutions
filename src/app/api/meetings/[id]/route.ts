@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -14,7 +15,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { title, date, time, meetLink } = body;
 
     const meeting = await prisma.meeting.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title: title || undefined,
         date: date ? new Date(date) : undefined,
@@ -30,15 +31,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await prisma.meeting.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ success: true });

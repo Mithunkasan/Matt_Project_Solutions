@@ -5,15 +5,16 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const projectFile = await prisma.projectFile.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!projectFile) {
@@ -29,7 +30,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await prisma.projectFile.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ success: true });
