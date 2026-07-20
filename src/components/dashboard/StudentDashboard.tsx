@@ -115,6 +115,7 @@ export function StudentDashboard({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | number | null>(null);
+  const chatViewportRef = useRef<HTMLDivElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const activeProject = projects[0]; // Take the first project assigned
@@ -140,7 +141,10 @@ export function StudentDashboard({
 
   const scrollToBottom = () => {
     setTimeout(() => {
-      chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      const chatViewport = chatViewportRef.current;
+      if (chatViewport) {
+        chatViewport.scrollTop = chatViewport.scrollHeight;
+      }
     }, 100);
   };
 
@@ -770,7 +774,7 @@ export function StudentDashboard({
             </div>
 
             {/* Message Viewport */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50/30 dark:bg-gray-950/10">
+            <div ref={chatViewportRef} className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50/30 dark:bg-gray-950/10">
               {messages.length > 0 ? (
                 messages.map((msg) => {
                   const isAdminMsg = msg.senderRole === "ADMIN";
