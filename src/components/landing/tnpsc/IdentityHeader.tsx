@@ -8,8 +8,8 @@ interface IdentityHeaderProps {
   themeColor: "blue" | "red" | "green" | "black" | "grey";
 }
 
-// Local QRCode component with Logo overlay at the center
-function QRCodeWithLogo({ text, logoUrl, size = 80 }: { text: string; logoUrl: string; size?: number }) {
+// Local QRCode component
+export function QRCodeWithLogo({ text, logoUrl, size = 80 }: { text: string; logoUrl?: string; size?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -22,9 +22,9 @@ function QRCodeWithLogo({ text, logoUrl, size = 80 }: { text: string; logoUrl: s
         text,
         {
           width: size,
-          margin: 1,
+          margin: 3,
           color: {
-            dark: "#0f172a", // Dark slate color
+            dark: "#000000",
             light: "#ffffff",
           },
           errorCorrectionLevel: "H", // High error correction level (30%) allows logo overlay
@@ -39,12 +39,13 @@ function QRCodeWithLogo({ text, logoUrl, size = 80 }: { text: string; logoUrl: s
           if (!canvas) return;
           const ctx = canvas.getContext("2d");
           if (!ctx) return;
+          if (!logoUrl) return;
 
           // Load and draw center logo
           const img = new window.Image();
           img.src = logoUrl;
           img.onload = () => {
-            const logoSize = size * 0.24; // 24% of QR code size
+            const logoSize = size * 0.18;
             const x = (size - logoSize) / 2;
             const y = (size - logoSize) / 2;
 
