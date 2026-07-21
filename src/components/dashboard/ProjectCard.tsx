@@ -140,7 +140,7 @@ import { Button } from "@/components/ui/button";
 import { Project } from "@/types";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Upload, Calendar, Bell, X, CheckCircle2, Trash2 } from "lucide-react";
+import { Upload, Calendar, Bell, X, CheckCircle2, Trash2, FileUp, TrendingUp } from "lucide-react";
 
 interface ProjectCardProps {
   projects: Project;
@@ -155,11 +155,14 @@ export function ProjectCard({ projects, onDelete, onUpdate }: ProjectCardProps) 
   const [editData, setEditData] = useState<Partial<Project>>(projects);
 
   const isAdmin = session?.user?.role === 'ADMIN';
+  const isProjectHandler = session?.user?.role === 'PROJECT_HANDLER';
 
   // Modal States
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isMeetOpen, setIsMeetOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isShareFileOpen, setIsShareFileOpen] = useState(false);
+  const [isProgressOpen, setIsProgressOpen] = useState(false);
 
   // Forms
   const [uploadDocName, setUploadDocName] = useState("Proposal");
@@ -183,6 +186,16 @@ export function ProjectCard({ projects, onDelete, onUpdate }: ProjectCardProps) 
     sendEmail: false
   });
   const [sendingAlert, setSendingAlert] = useState(false);
+  const [shareFile, setShareFile] = useState<File | null>(null);
+  const [shareMessage, setShareMessage] = useState("");
+  const [sharingFile, setSharingFile] = useState(false);
+  const [progressForm, setProgressForm] = useState({
+    title: "",
+    status: projects.status || "ongoing",
+    progress: 50,
+    details: ""
+  });
+  const [savingProgress, setSavingProgress] = useState(false);
 
   const handleEdit = () => {
     setEditing(true);
@@ -368,6 +381,80 @@ export function ProjectCard({ projects, onDelete, onUpdate }: ProjectCardProps) 
     }
   };
 
+  const handleShareFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shareFile) {
+      alert("Please select a file to share.");
+      return;
+    }
+
+    setSharingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("projectId", projects.id);
+      formData.append("file", shareFile);
+      formData.append("message", shareMessage);
+
+      const res = await fetch("/api/shared-files", {
+        method: "POST",
+        body: formData
+      });
+
+      if (res.ok) {
+        setShareFile(null);
+        setShareMessage("");
+        setIsShareFileOpen(false);
+        alert("File shared with the student.");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to share file");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to share file");
+    } finally {
+      setSharingFile(false);
+    }
+  };
+
+  const handleProgressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProgress(true);
+    try {
+      const res = await fetch("/api/progress-updates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: projects.id,
+          title: progressForm.title,
+          status: progressForm.status,
+          progress: progressForm.progress,
+          details: progressForm.details
+        })
+      });
+
+      if (res.ok) {
+        onUpdate(projects.id, { status: progressForm.status as Project["status"] });
+        setProgressForm({
+          title: "",
+          status: progressForm.status,
+          progress: progressForm.progress,
+          details: ""
+        });
+        setIsProgressOpen(false);
+        alert("Project progress updated.");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update progress");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update progress");
+    } finally {
+      setSavingProgress(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -461,7 +548,12 @@ export function ProjectCard({ projects, onDelete, onUpdate }: ProjectCardProps) 
                 />
               </div>
             ) : (
-              <p className="text-sm text-gray-800 dark:text-gray-200 font-medium break-words">{projects.student}</p>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-800 dark:text-gray-200 font-medium break-words">{projects.student}</p>
+                {projects.studentEmail && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 break-words">{projects.studentEmail}</p>
+                )}
+              </div>
             )}
           </div>
           <div className="flex flex-col">
@@ -555,18 +647,18 @@ export function ProjectCard({ projects, onDelete, onUpdate }: ProjectCardProps) 
               <div
                 className="h-4 transition-all duration-500 flex items-center justify-end pr-2"
                 style={{
-                  width: `${projects.paymentProgress}%`,
+                  width: `${projects.paymentProgress ?? 0}%`,
                   background: `linear-gradient(90deg, #12498b, #1e6bb8)`,
                 }}
               >
-                {projects.paymentProgress > 15 && (
-                  <span className="text-xs font-bold text-white">{projects.paymentProgress}%</span>
+                {(projects.paymentProgress ?? 0) > 15 && (
+                  <span className="text-xs font-bold text-white">{projects.paymentProgress ?? 0}%</span>
                 )}
               </div>
             </div>
-            {projects.paymentProgress <= 15 && (
+            {(projects.paymentProgress ?? 0) <= 15 && (
               <div className="text-right text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">
-                {projects.paymentProgress}% paid
+                {projects.paymentProgress ?? 0}% paid
               </div>
             )}
           </div>
@@ -644,7 +736,154 @@ export function ProjectCard({ projects, onDelete, onUpdate }: ProjectCardProps) 
             </button>
           </div>
         )}
+
+        {isProjectHandler && !editing && (
+          <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-150 dark:border-gray-800 text-center">
+            <button
+              onClick={() => setIsShareFileOpen(true)}
+              className="flex flex-col items-center justify-center p-2 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 text-[10px] font-bold cursor-pointer"
+            >
+              <FileUp className="w-4 h-4 text-blue-500 mb-1" />
+              <span>Send File</span>
+            </button>
+            <button
+              onClick={() => setIsProgressOpen(true)}
+              className="flex flex-col items-center justify-center p-2 rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 text-[10px] font-bold cursor-pointer"
+            >
+              <TrendingUp className="w-4 h-4 text-green-500 mb-1" />
+              <span>Update Progress</span>
+            </button>
+          </div>
+        )}
       </CardContent>
+
+      {isShareFileOpen && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsShareFileOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-4">
+              Send File to Student
+            </h3>
+            <form onSubmit={handleShareFile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Student</label>
+                <input
+                  type="email"
+                  disabled
+                  value={projects.studentEmail || "No student email"}
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs text-gray-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">File</label>
+                <input
+                  type="file"
+                  required
+                  onChange={(e) => e.target.files && setShareFile(e.target.files[0])}
+                  className="w-full text-xs text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Message</label>
+                <textarea
+                  rows={3}
+                  value={shareMessage}
+                  onChange={(e) => setShareMessage(e.target.value)}
+                  placeholder="Optional note for the student"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={sharingFile}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {sharingFile ? "Uploading..." : "Send File"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isProgressOpen && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsProgressOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-4">
+              Update Project Progress
+            </h3>
+            <form onSubmit={handleProgressSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Update Title</label>
+                <input
+                  type="text"
+                  required
+                  value={progressForm.title}
+                  onChange={(e) => setProgressForm({ ...progressForm, title: e.target.value })}
+                  placeholder="e.g. Module integration completed"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                  <select
+                    value={progressForm.status}
+                    onChange={(e) => setProgressForm({ ...progressForm, status: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="development">Development</option>
+                    <option value="testing">Testing</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Progress %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    required
+                    value={progressForm.progress}
+                    onChange={(e) => setProgressForm({ ...progressForm, progress: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Details</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={progressForm.details}
+                  onChange={(e) => setProgressForm({ ...progressForm, details: e.target.value })}
+                  placeholder="Describe what was completed, pending items, blockers, or next steps."
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={savingProgress}
+                className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {savingProgress ? "Saving..." : "Save Update"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 1. DOCUMENT UPLOAD MODAL */}
       {isUploadOpen && (

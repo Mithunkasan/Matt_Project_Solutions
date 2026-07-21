@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ClassSchedule } from "@/types";
+import { Project } from "@/types";
 import { Calendar, Clock, User, MapPin, Building2, BookOpen } from "lucide-react";
 
 interface AddClassFormProps {
   onClassAdded: (classItem: ClassSchedule) => void;
   onCancel: () => void;
+  projects?: Project[];
 }
 
-export function AddClassForm({ onClassAdded, onCancel }: AddClassFormProps) {
+export function AddClassForm({ onClassAdded, onCancel, projects = [] }: AddClassFormProps) {
   const [formData, setFormData] = useState({
     project: "",
     studentEmail: "",
@@ -27,6 +29,22 @@ export function AddClassForm({ onClassAdded, onCancel }: AddClassFormProps) {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleProjectSelect = (projectId: string) => {
+    const project = projects.find(item => item.id === projectId);
+    if (!project) {
+      handleInputChange("project", projectId);
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      project: project.name,
+      studentEmail: project.studentEmail || "",
+      faculty: project.handler || prev.faculty,
+      department: project.department || prev.department
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,15 +102,32 @@ export function AddClassForm({ onClassAdded, onCancel }: AddClassFormProps) {
             <Label htmlFor="project" className="text-sm font-semibold text-black dark:text-gray-200">
               Project <span className="text-red-500">*</span>
             </Label>
-            <input
-              type="text"
-              id="project"
-              placeholder="Project title"
-              className="w-full h-11 px-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white focus:border-[#b12222] dark:focus:border-red-500 focus:ring-2 focus:ring-[#b12222]/20 outline-none transition-all"
-              value={formData.project}
-              onChange={(e) => handleInputChange("project", e.target.value)}
-              required
-            />
+            {projects.length > 0 ? (
+              <select
+                id="project"
+                className="w-full h-11 px-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white focus:border-[#b12222] dark:focus:border-red-500 focus:ring-2 focus:ring-[#b12222]/20 outline-none transition-all"
+                value={projects.find(item => item.name === formData.project)?.id || ""}
+                onChange={(e) => handleProjectSelect(e.target.value)}
+                required
+              >
+                <option value="">Select assigned project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name} - {project.student}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                id="project"
+                placeholder="Project title"
+                className="w-full h-11 px-3 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-black dark:text-white focus:border-[#b12222] dark:focus:border-red-500 focus:ring-2 focus:ring-[#b12222]/20 outline-none transition-all"
+                value={formData.project}
+                onChange={(e) => handleInputChange("project", e.target.value)}
+                required
+              />
+            )}
           </div>
         </div>
 
@@ -150,6 +185,8 @@ export function AddClassForm({ onClassAdded, onCancel }: AddClassFormProps) {
               className="h-11 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#b12222] dark:focus:border-red-500 focus:ring-[#b12222]/20 transition-all text-black dark:text-white"
               value={formData.studentEmail}
               onChange={(e) => handleInputChange("studentEmail", e.target.value)}
+              readOnly={projects.length > 0}
+              required
             />
           </div>
 

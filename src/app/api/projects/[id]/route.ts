@@ -74,7 +74,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.email || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -119,7 +119,7 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.email || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -134,10 +134,35 @@ export async function PUT(
     }
 
     const body = await request.json()
+    const amountPaid = body.amountPaid !== undefined ? Number(body.amountPaid) || 0 : undefined
+    const finalAmount = body.finalAmount !== undefined ? Number(body.finalAmount) || 0 : undefined
+    const paymentProgress =
+      amountPaid !== undefined && finalAmount !== undefined
+        ? finalAmount > 0 ? Math.round((amountPaid / finalAmount) * 100) : 0
+        : undefined
+
+    const data = {
+      ...(body.name !== undefined && { name: String(body.name) }),
+      ...(body.college !== undefined && { college: String(body.college) }),
+      ...(body.department !== undefined && { department: String(body.department) }),
+      ...(body.handler !== undefined && { handler: String(body.handler) }),
+      ...(body.handlerEmail !== undefined && { handlerEmail: body.handlerEmail ? String(body.handlerEmail).toLowerCase().trim() : null }),
+      ...(body.team !== undefined && { team: String(body.team) }),
+      ...(body.student !== undefined && { student: String(body.student) }),
+      ...(body.studentEmail !== undefined && { studentEmail: body.studentEmail ? String(body.studentEmail).toLowerCase().trim() : null }),
+      ...(body.date !== undefined && { date: new Date(body.date) }),
+      ...(amountPaid !== undefined && { amountPaid }),
+      ...(finalAmount !== undefined && { finalAmount }),
+      ...(paymentProgress !== undefined && { paymentProgress }),
+      ...(body.status !== undefined && { status: String(body.status) }),
+    }
     
     const updatedProject = await prisma.project.update({
       where: { id },
-      data: body,
+      data,
+      include: {
+        files: true
+      }
     })
     
     return NextResponse.json(updatedProject)

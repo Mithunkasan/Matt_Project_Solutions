@@ -63,6 +63,40 @@ interface MeetingItem {
   updatedAt: string;
 }
 
+interface SharedFileItem {
+  id: string;
+  projectId: string;
+  studentEmail: string;
+  handlerEmail: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  message: string | null;
+  createdAt: string;
+  project?: {
+    name: string;
+    student: string;
+    handler: string;
+  };
+}
+
+interface ProgressUpdateItem {
+  id: string;
+  projectId: string;
+  studentEmail: string;
+  handlerEmail: string;
+  status: string;
+  progress: number;
+  title: string;
+  details: string;
+  createdAt: string;
+  project?: {
+    name: string;
+    student: string;
+    handler: string;
+  };
+}
+
 interface NotificationItem {
   id: string;
   studentEmail: string;
@@ -99,10 +133,31 @@ interface InternshipRegistrationItem {
   id: string;
   fullName: string;
   collegeName: string;
+  department?: string | null;
   yearOfStudy: string;
   email: string;
   phoneNumber: string;
   createdAt: string;
+}
+
+interface ProjectHandlerOption {
+  name: string;
+  email: string;
+}
+
+interface WorkshopItem {
+  id: string;
+  date: string;
+  time: string;
+  handlerEmail: string;
+  handlerName: string;
+  participantNames: string;
+  college: string;
+  department: string;
+  topic: string;
+  duration: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function DashboardClient() {
@@ -122,16 +177,22 @@ export function DashboardClient() {
   } = useAppStore();
 
   const isAdmin = session?.user?.role === 'ADMIN';
+  const isProjectHandler = session?.user?.role === 'PROJECT_HANDLER';
+  const canManageSchedules = isProjectHandler;
 
   const [selectedTeam, setSelectedTeam] = useState("All MATT Teams");
   const [selectedStatus, setSelectedStatus] = useState("All Statuses");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"projects" | "classes" | "courses" | "meetings" | "chat" | "links" | "announcements" | "offers" | "internships">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "classes" | "courses" | "meetings" | "chat" | "links" | "announcements" | "offers" | "internships" | "activity" | "workshops">("projects");
 
   // Custom States for Courses, Meetings, Notifications
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [meetings, setMeetings] = useState<MeetingItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [sharedFiles, setSharedFiles] = useState<SharedFileItem[]>([]);
+  const [progressUpdates, setProgressUpdates] = useState<ProgressUpdateItem[]>([]);
+  const [workshops, setWorkshops] = useState<WorkshopItem[]>([]);
+  const [projectHandlers, setProjectHandlers] = useState<ProjectHandlerOption[]>([]);
 
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [loading, setLoading] = useState(true);
@@ -162,6 +223,18 @@ export function DashboardClient() {
   });
   const [mgmtError, setMgmtError] = useState("");
   const [mgmtLoading, setMgmtLoading] = useState(false);
+  const [workshopForm, setWorkshopForm] = useState({
+    id: "",
+    date: "",
+    time: "",
+    handlerEmail: "",
+    handlerName: "",
+    participantNames: "",
+    college: "",
+    department: "",
+    topic: "",
+    duration: "",
+  });
 
   // Fetch functions for Landing Page Management
   const fetchLinks = async () => {
@@ -229,6 +302,42 @@ export function DashboardClient() {
     }
   };
 
+  const fetchSharedFiles = async () => {
+    try {
+      const res = await fetch("/api/shared-files");
+      if (res.ok) setSharedFiles(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchProgressUpdates = async () => {
+    try {
+      const res = await fetch("/api/progress-updates");
+      if (res.ok) setProgressUpdates(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchWorkshops = async () => {
+    try {
+      const res = await fetch("/api/workshops");
+      if (res.ok) setWorkshops(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchProjectHandlers = async () => {
+    try {
+      const res = await fetch("/api/project-handlers");
+      if (res.ok) setProjectHandlers(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -243,15 +352,19 @@ export function DashboardClient() {
           const promises = [
             fetchProjects(), 
             fetchClassSchedules(),
-            fetchCourses(),
             fetchMeetings(),
-            fetchNotifications()
+            fetchNotifications(),
+            fetchSharedFiles(),
+            fetchProgressUpdates(),
+            fetchWorkshops()
           ];
           if (isAdmin) {
+            promises.push(fetchCourses());
             promises.push(fetchLinks());
             promises.push(fetchAnnouncements());
             promises.push(fetchOffers());
             promises.push(fetchInternshipRegistrations());
+            promises.push(fetchProjectHandlers());
           }
           await Promise.all(promises);
         } catch (error) {
@@ -470,6 +583,89 @@ export function DashboardClient() {
         await fetchInternshipRegistrations();
       } else {
         alert("Failed to delete internship application");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const resetWorkshopForm = () => {
+    setWorkshopForm({
+      id: "",
+      date: "",
+      time: "",
+      handlerEmail: "",
+      handlerName: "",
+      participantNames: "",
+      college: "",
+      department: "",
+      topic: "",
+      duration: "",
+    });
+    setMgmtError("");
+  };
+
+  const handleWorkshopHandlerChange = (email: string) => {
+    const handler = projectHandlers.find(item => item.email === email);
+    setWorkshopForm(prev => ({
+      ...prev,
+      handlerEmail: email,
+      handlerName: handler?.name || ""
+    }));
+  };
+
+  const handleWorkshopEdit = (workshop: WorkshopItem) => {
+    setWorkshopForm({
+      id: workshop.id,
+      date: workshop.date ? new Date(workshop.date).toISOString().slice(0, 10) : "",
+      time: workshop.time,
+      handlerEmail: workshop.handlerEmail,
+      handlerName: workshop.handlerName,
+      participantNames: workshop.participantNames,
+      college: workshop.college,
+      department: workshop.department,
+      topic: workshop.topic,
+      duration: workshop.duration,
+    });
+    setMgmtError("");
+  };
+
+  const handleWorkshopSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMgmtLoading(true);
+    setMgmtError("");
+
+    try {
+      const res = await fetch("/api/workshops", {
+        method: workshopForm.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(workshopForm),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        await fetchWorkshops();
+        resetWorkshopForm();
+      } else {
+        setMgmtError(data.error || "Failed to save workshop");
+      }
+    } catch {
+      setMgmtError("Network error. Please try again.");
+    } finally {
+      setMgmtLoading(false);
+    }
+  };
+
+  const handleWorkshopDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this workshop?")) return;
+
+    try {
+      const res = await fetch(`/api/workshops?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchWorkshops();
+        if (workshopForm.id === id) resetWorkshopForm();
+      } else {
+        alert("Failed to delete workshop");
       }
     } catch (e) {
       console.error(e);
@@ -722,9 +918,9 @@ export function DashboardClient() {
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const showStatsCards = isAdmin && (activeTab === "projects" || activeTab === "classes");
+  const showStatsCards = isAdmin && activeTab === "projects";
 
-  if (!isAdmin) {
+  if (!isAdmin && !isProjectHandler) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6 lg:p-8 transition-colors">
         <Header />
@@ -733,10 +929,13 @@ export function DashboardClient() {
             session={session}
             projects={projects}
             courses={courses}
+            classSchedules={classSchedules}
             meetings={meetings}
             notifications={notifications}
+            sharedFiles={sharedFiles}
+            progressUpdates={progressUpdates}
             onRefreshData={async () => {
-              await Promise.all([fetchProjects(), fetchClassSchedules(), fetchCourses(), fetchMeetings(), fetchNotifications()]);
+              await Promise.all([fetchProjects(), fetchClassSchedules(), fetchCourses(), fetchMeetings(), fetchNotifications(), fetchSharedFiles(), fetchProgressUpdates()]);
             }}
           />
         </main>
@@ -766,25 +965,16 @@ export function DashboardClient() {
           >
             Projects
           </button>
-          <button
-            onClick={() => setActiveTab("classes")}
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${activeTab === "classes"
-              ? "bg-[#b12222] text-white shadow-sm"
-              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
-              }`}
-          >
-            Schedules
-          </button>
-          {isAdmin && (
+          {isProjectHandler && (
             <>
               <button
-                onClick={() => setActiveTab("courses")}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 shrink-0 ${activeTab === "courses"
-                  ? "bg-rose-600 text-white shadow-sm"
+                onClick={() => setActiveTab("classes")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${activeTab === "classes"
+                  ? "bg-[#b12222] text-white shadow-sm"
                   : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
                   }`}
               >
-                Courses
+                Schedules
               </button>
               <button
                 onClick={() => setActiveTab("meetings")}
@@ -803,6 +993,46 @@ export function DashboardClient() {
                   }`}
               >
                 Chat Support
+              </button>
+              <button
+                onClick={() => setActiveTab("workshops")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 shrink-0 ${activeTab === "workshops"
+                  ? "bg-cyan-700 text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+                  }`}
+              >
+                Workshops
+              </button>
+            </>
+          )}
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab("courses")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 shrink-0 ${activeTab === "courses"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+                  }`}
+              >
+                Courses
+              </button>
+              <button
+                onClick={() => setActiveTab("activity")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 shrink-0 ${activeTab === "activity"
+                  ? "bg-slate-700 text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+                  }`}
+              >
+                Handler Activity
+              </button>
+              <button
+                onClick={() => setActiveTab("workshops")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 shrink-0 ${activeTab === "workshops"
+                  ? "bg-cyan-700 text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+                  }`}
+              >
+                Workshop
               </button>
               <button
                 onClick={() => setActiveTab("links")}
@@ -845,7 +1075,7 @@ export function DashboardClient() {
         </div>
 
         <div className="flex items-center gap-2">
-          {isAdmin && (activeTab === "projects" || activeTab === "classes") && (
+          {isAdmin && activeTab === "projects" && (
             <div className="flex bg-gray-200 dark:bg-gray-800 p-1 rounded-lg">
               <button
                 onClick={() => setViewMode("card")}
@@ -863,7 +1093,7 @@ export function DashboardClient() {
               </button>
             </div>
           )}
-          {(activeTab === "projects" || activeTab === "classes") && (
+          {isAdmin && activeTab === "projects" && (
             <button
               onClick={downloadPDF}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all shadow-sm"
@@ -900,12 +1130,283 @@ export function DashboardClient() {
         <CourseManager />
       )}
 
-      {activeTab === "meetings" && isAdmin && (
+      {activeTab === "activity" && isAdmin && (
+        <div className="space-y-6 lg:space-y-8">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Project Handler Activity</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monitor handler-created schedules, shared files, and project progress updates.</p>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Schedules</h3>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[420px] overflow-y-auto">
+                {classSchedules.map((item) => (
+                  <div key={item.id} className="p-4 text-xs space-y-1">
+                    <p className="font-bold text-gray-900 dark:text-white">{item.project}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{item.studentEmail || "No student email"}</p>
+                    <p className="text-gray-600 dark:text-gray-300">{new Date(item.date).toLocaleDateString()} at {item.time}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{item.location}</p>
+                  </div>
+                ))}
+                {classSchedules.length === 0 && (
+                  <p className="p-4 text-xs text-gray-500">No schedules found.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Shared Files</h3>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[420px] overflow-y-auto">
+                {sharedFiles.map((file) => (
+                  <div key={file.id} className="p-4 text-xs space-y-1">
+                    <p className="font-bold text-gray-900 dark:text-white">{file.fileName}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{file.project?.name || "Project"} - {file.studentEmail}</p>
+                    <p className="text-gray-500 dark:text-gray-400">Handler: {file.handlerEmail}</p>
+                    {file.message && <p className="text-gray-600 dark:text-gray-300">{file.message}</p>}
+                    <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+                      View file
+                    </a>
+                  </div>
+                ))}
+                {sharedFiles.length === 0 && (
+                  <p className="p-4 text-xs text-gray-500">No shared files found.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Progress Updates</h3>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[420px] overflow-y-auto">
+                {progressUpdates.map((update) => (
+                  <div key={update.id} className="p-4 text-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-gray-900 dark:text-white">{update.title}</p>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold">
+                        {update.progress}%
+                      </span>
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400">{update.project?.name || "Project"} - {update.studentEmail}</p>
+                    <p className="text-gray-500 dark:text-gray-400">Status: {update.status}</p>
+                    <p className="text-gray-600 dark:text-gray-300">{update.details}</p>
+                  </div>
+                ))}
+                {progressUpdates.length === 0 && (
+                  <p className="p-4 text-xs text-gray-500">No progress updates found.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "meetings" && isProjectHandler && (
         <MeetingManager />
       )}
 
-      {activeTab === "chat" && isAdmin && (
+      {activeTab === "chat" && isProjectHandler && (
         <AdminChatHub />
+      )}
+
+      {activeTab === "workshops" && (
+        <div className="space-y-6 lg:space-y-8">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Workshop</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {isAdmin ? "Create and manage workshop records assigned to Project Handlers." : "View workshops assigned to you by the admin."}
+            </p>
+          </div>
+
+          {isAdmin && (
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+              {mgmtError && (
+                <div className="mb-4 bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-3 rounded text-sm">
+                  {mgmtError}
+                </div>
+              )}
+              <form onSubmit={handleWorkshopSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={workshopForm.date}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={workshopForm.time}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, time: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Project Handler</label>
+                  <select
+                    required
+                    value={workshopForm.handlerEmail}
+                    onChange={(e) => handleWorkshopHandlerChange(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Select Project Handler</option>
+                    {projectHandlers.map((handler) => (
+                      <option key={handler.email} value={handler.email}>
+                        {handler.name} - {handler.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Duration</label>
+                  <input
+                    type="text"
+                    required
+                    value={workshopForm.duration}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, duration: e.target.value })}
+                    placeholder="e.g. 2 hours"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">College</label>
+                  <input
+                    type="text"
+                    required
+                    value={workshopForm.college}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, college: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                  <input
+                    type="text"
+                    required
+                    value={workshopForm.department}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, department: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Participants&apos; Names</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={workshopForm.participantNames}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, participantNames: e.target.value })}
+                    placeholder="Enter participant names"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white resize-none"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Topic</label>
+                  <input
+                    type="text"
+                    required
+                    value={workshopForm.topic}
+                    onChange={(e) => setWorkshopForm({ ...workshopForm, topic: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div className="md:col-span-2 flex flex-col sm:flex-row gap-3 justify-end pt-2">
+                  {workshopForm.id && (
+                    <button
+                      type="button"
+                      onClick={resetWorkshopForm}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={mgmtLoading}
+                    className="px-5 py-2 bg-cyan-700 hover:bg-cyan-800 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+                  >
+                    {mgmtLoading ? "Saving..." : workshopForm.id ? "Update Workshop" : "Create Workshop"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300">Date / Time</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300">Handler</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300">Participants</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300">College / Department</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300">Topic</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300">Duration</th>
+                    {isAdmin && <th className="px-6 py-4 text-xs font-bold uppercase text-gray-700 dark:text-gray-300 text-right">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {workshops.map((workshop) => (
+                    <tr key={workshop.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        <div className="font-semibold">{new Date(workshop.date).toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{workshop.time}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <div className="font-semibold text-gray-900 dark:text-white">{workshop.handlerName}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{workshop.handlerEmail}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs whitespace-pre-wrap">{workshop.participantNames}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        <div>{workshop.college}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{workshop.department}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">{workshop.topic}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{workshop.duration}</td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 text-right">
+                          <div className="inline-flex gap-2">
+                            <button
+                              onClick={() => handleWorkshopEdit(workshop)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                              title="Edit Workshop"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleWorkshopDelete(workshop.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                              title="Delete Workshop"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {workshops.length === 0 && (
+                    <tr>
+                      <td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-sm text-gray-500">
+                        No workshop records found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab === "projects" && (
@@ -944,7 +1445,7 @@ export function DashboardClient() {
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">College</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Team</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Status</th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Amount</th>
+                      {isAdmin && <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Amount</th>}
                       {isAdmin && <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right">Actions</th>}
                     </tr>
                   </thead>
@@ -969,9 +1470,11 @@ export function DashboardClient() {
                             {project.status.toUpperCase()}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
-                          ₹{project.finalAmount?.toLocaleString()}
-                        </td>
+                        {isAdmin && (
+                          <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
+                            ₹{project.finalAmount?.toLocaleString()}
+                          </td>
+                        )}
                         {isAdmin && (
                           <td className="px-6 py-4 text-right space-x-2">
                             <button
@@ -1018,7 +1521,7 @@ export function DashboardClient() {
 
       {activeTab === "classes" && (
         <div className="space-y-6 lg:space-y-8">
-          {isAdmin && (
+          {canManageSchedules && (
             <div className="w-full bg-white dark:bg-gray-900 rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
               <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
                 <div className="flex-1 min-w-0">
@@ -1033,11 +1536,9 @@ export function DashboardClient() {
                     />
                   </div>
                 </div>
-                {isAdmin && (
-                  <div className="flex gap-3 items-center">
-                    <AddClassDialog onClassAdded={handleClassAdded} />
-                  </div>
-                )}
+                <div className="flex gap-3 items-center">
+                  <AddClassDialog onClassAdded={handleClassAdded} projects={projects} />
+                </div>
               </div>
             </div>
           )}
@@ -1064,7 +1565,7 @@ export function DashboardClient() {
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Faculty</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Location</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">Date</th>
-                      {isAdmin && <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right">Actions</th>}
+                      {canManageSchedules && <th className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -1084,7 +1585,7 @@ export function DashboardClient() {
                           <div className="text-sm text-gray-900 dark:text-white">{classItem.date ? new Date(classItem.date).toLocaleDateString() : 'N/A'}</div>
                           <div className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-tighter">{classItem.time}</div>
                         </td>
-                        {isAdmin && (
+                        {canManageSchedules && (
                           <td className="px-6 py-4 text-right space-x-2">
                             <button
                               onClick={() => setViewingClass(classItem)}
@@ -1376,6 +1877,7 @@ export function DashboardClient() {
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 w-32">Date</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Full Name</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">College / Institution</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Department</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 w-24">Year</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Email Address</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 w-36">Phone Number</th>
@@ -1397,6 +1899,9 @@ export function DashboardClient() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
                         {reg.collegeName}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        {reg.department || <span className="text-gray-400 italic">—</span>}
                       </td>
                       <td className="px-6 py-4 text-xs font-bold text-slate-600 dark:text-slate-400">
                         <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
@@ -1426,7 +1931,7 @@ export function DashboardClient() {
                   ))}
                   {internshipRegistrations.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center py-10 text-gray-500 text-xs">No internship registrations found.</td>
+                      <td colSpan={8} className="text-center py-10 text-gray-500 text-xs">No internship registrations found.</td>
                     </tr>
                   )}
                 </tbody>

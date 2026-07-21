@@ -91,10 +91,10 @@ function LoginPageContent() {
               </div>
 
               <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
-                Student Portal
+                Student & Handler Portal
               </h1>
               <p className="text-base sm:text-lg text-blue-100/80 mb-8 leading-relaxed">
-                Sign in with your registered email to track project progress and access schedules
+                Sign in with your registered email to access your dashboard
               </p>
               <div className="text-blue-50/70 text-sm sm:text-base">
                 <p className="mb-4">Don&apos;t have an account?</p>
@@ -112,7 +112,7 @@ function LoginPageContent() {
             <div className="w-full max-w-sm">
               <div className="text-center mb-8">
                 <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                  Student Login
+                  Portal Login
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in below</p>
               </div>

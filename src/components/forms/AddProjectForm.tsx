@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Project } from "@/types";
-import { Building2, User, Calendar, DollarSign, TrendingUp, ArrowRight, ArrowLeft } from "lucide-react";
+import { Building2, User, Calendar, DollarSign, TrendingUp, ArrowRight, ArrowLeft, Mail } from "lucide-react";
 
 interface AddProjectFormProps {
   onProjectAdded: (project: Project) => void;
@@ -29,6 +29,7 @@ export function AddProjectForm({ onProjectAdded, onCancel }: AddProjectFormProps
     college: "",
     department: "",
     handler: "",
+    handlerEmail: "",
     team: "",
     student: "",
     studentEmail: "",
@@ -128,6 +129,7 @@ export function AddProjectForm({ onProjectAdded, onCancel }: AddProjectFormProps
           college: "",
           department: "",
           handler: "",
+          handlerEmail: "",
           team: "",
           student: "",
           studentEmail: "",
@@ -150,7 +152,7 @@ export function AddProjectForm({ onProjectAdded, onCancel }: AddProjectFormProps
     }
   };
 
-  const canProceedToStep2 = formData.name && formData.college && formData.department && formData.handler && formData.team;
+  const canProceedToStep2 = formData.name && formData.college && formData.department && formData.handler && formData.handlerEmail && formData.team;
   const paymentProgress = formData.finalAmount > 0 ? Math.round((formData.amountPaid / formData.finalAmount) * 100) : 0;
 
   return (
@@ -247,6 +249,26 @@ export function AddProjectForm({ onProjectAdded, onCancel }: AddProjectFormProps
                   />
                 </div>
               </div>
+
+              {formData.handler.trim() && (
+                <div className="space-y-2">
+                  <Label htmlFor="handlerEmail" className="text-sm font-semibold text-black dark:text-gray-200">
+                    Project Handler Email <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    <Input
+                      id="handlerEmail"
+                      type="email"
+                      placeholder="handler@example.com"
+                      className="w-full h-11 pl-10 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#12498b] dark:focus:border-blue-500 focus:ring-[#12498b]/20 transition-all text-black dark:text-white"
+                      value={formData.handlerEmail}
+                      onChange={(e) => handleInputChange("handlerEmail", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="team" className="text-sm font-semibold text-black dark:text-gray-200">

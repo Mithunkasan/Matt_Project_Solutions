@@ -188,7 +188,7 @@ export function ClassScheduleCard({ classItem, onDelete, onUpdate }: ClassSchedu
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ClassSchedule>>(classItem);
 
-  const isAdmin = session?.user?.role === 'ADMIN';
+  const canManage = session?.user?.role === 'PROJECT_HANDLER';
 
   const handleEdit = () => {
     setEditing(true);
@@ -377,7 +377,7 @@ export function ClassScheduleCard({ classItem, onDelete, onUpdate }: ClassSchedu
         </div>
 
         {/* Action Buttons - Admin Only */}
-        {isAdmin && (
+        {canManage && (
           <div className="flex gap-3 flex-col sm:flex-row mt-auto">
             {editing ? (
               <>

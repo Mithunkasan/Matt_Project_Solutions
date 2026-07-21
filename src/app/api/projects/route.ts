@@ -129,6 +129,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendProjectHandlerInviteEmail } from '@/lib/nodemailer'
+import crypto from 'crypto'
+
+const sanitizeProjectForHandler = <T extends Record<string, unknown>>(project: T) => {
+  const { amountPaid, finalAmount, paymentProgress, ...safeProject } = project;
+  const mutableSafeProject = safeProject as Record<string, unknown>;
+  void amountPaid;
+  void finalAmount;
+  void paymentProgress;
+  if (Array.isArray(mutableSafeProject.files)) {
+    mutableSafeProject.files = mutableSafeProject.files.filter((file) => {
+      if (!file || typeof file !== 'object') return false;
+      const name = 'name' in file ? String(file.name).toLowerCase() : '';
+      const fileName = 'fileName' in file ? String(file.fileName).toLowerCase() : '';
+      return !name.includes('invoice') && !fileName.includes('invoice');
+    });
+  }
+  return mutableSafeProject;
+};
 
 export async function GET() {
   try {
@@ -138,8 +157,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Filter by student email if user is a student
-    const where = session.user.role === 'ADMIN' ? {} : { studentEmail: session.user.email };
+    let where = {};
+    if (session.user.role === 'PROJECT_HANDLER') {
+      where = { handlerEmail: session.user.email };
+    } else if (session.user.role !== 'ADMIN') {
+      where = { studentEmail: session.user.email };
+    }
 
     const projects = await prisma.project.findMany({
       where,
@@ -148,6 +171,10 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' }
     })
+
+    if (session.user.role === 'PROJECT_HANDLER') {
+      return NextResponse.json(projects.map(sanitizeProjectForHandler))
+    }
 
     return NextResponse.json(projects)
   } catch (error) {
@@ -163,7 +190,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -172,7 +199,7 @@ export async function POST(request: NextRequest) {
     console.log('Received data:', data)
 
     // Validate required fields
-    const requiredFields = ['name', 'college', 'department', 'handler', 'team', 'student', 'date']
+    const requiredFields = ['name', 'college', 'department', 'handler', 'handlerEmail', 'team', 'student', 'date']
     const missingFields = requiredFields.filter(field => !data[field])
 
     if (missingFields.length > 0) {
@@ -203,6 +230,7 @@ export async function POST(request: NextRequest) {
     // Calculate payment progress
     const paymentProgress = finalAmount > 0 ?
       Math.round((amountPaid / finalAmount) * 100) : 0;
+    const handlerEmail = String(data.handlerEmail).toLowerCase().trim();
 
     const project = await prisma.project.create({
       data: {
@@ -210,6 +238,7 @@ export async function POST(request: NextRequest) {
         college: data.college,
         department: data.department,
         handler: data.handler,
+        handlerEmail,
         team: data.team,
         student: data.student,
         studentEmail: data.studentEmail || null,
@@ -220,6 +249,28 @@ export async function POST(request: NextRequest) {
         paymentProgress: paymentProgress
       }
     })
+
+    const existingHandler = await prisma.user.findUnique({
+      where: { email: handlerEmail },
+      select: { id: true, role: true }
+    });
+
+    if (!existingHandler || existingHandler.role !== 'PROJECT_HANDLER') {
+      const token = crypto.randomBytes(32).toString('hex');
+      await prisma.projectHandlerInvite.create({
+        data: {
+          email: handlerEmail,
+          name: data.handler,
+          token,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        }
+      });
+
+      const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      const inviteLink = `${origin}/project-handler/invite?token=${token}`;
+      sendProjectHandlerInviteEmail(handlerEmail, data.handler, inviteLink)
+        .catch(err => console.error('Async project handler invite error:', err));
+    }
 
     return NextResponse.json(project)
 
