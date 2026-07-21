@@ -90,6 +90,72 @@ export async function sendPasswordResetEmail(email: string, resetLink: string) {
   }
 }
 
+export async function sendProjectHandlerInviteEmail(email: string, handlerName: string, inviteLink: string) {
+  try {
+    const transporter = await createTransporter();
+
+    await transporter.verify();
+
+    const mailOptions = {
+      from: `"Matt Project Solutions" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
+      to: email,
+      subject: "Project Handler Dashboard Invitation",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #12498b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+                .button { display: inline-block; padding: 12px 24px; background-color: #b12222; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0; }
+                .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Project Handler Invitation</h1>
+                </div>
+                <div class="content">
+                    <h2>Hello ${handlerName || "Project Handler"},</h2>
+                    <p>You have been invited to manage assigned student projects in Matt Project Solutions.</p>
+                    <div style="text-align: center;">
+                        <a href="${inviteLink}" class="button">Create Password</a>
+                    </div>
+                    <p>If the button does not work, copy and paste this link into your browser:</p>
+                    <p style="word-break: break-all; background: #eee; padding: 10px; border-radius: 4px;">
+                        ${inviteLink}
+                    </p>
+                    <p>This link will expire in 7 days.</p>
+                    <div class="footer">
+                        <p>If you were not expecting this invitation, please ignore this email.</p>
+                        <p>&copy; ${new Date().getFullYear()} Matt Project Solutions. All rights reserved.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+      `,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+
+    return {
+      success: true,
+      messageId: result.messageId
+    };
+  } catch (error) {
+    console.error('Project handler invite email error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
 // Send OTP email
 export async function sendOTPEmail(email: string, otp: string, purposeText: string) {
   try {

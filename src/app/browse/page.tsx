@@ -255,22 +255,22 @@ function BrowsePageContent() {
               <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">Payment Progress</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{selectedProject.paymentProgress}%</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{selectedProject.paymentProgress ?? 0}%</span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-3">
                   <div
                     className="bg-gradient-to-r from-[#12498b] to-[#1a5ba8] h-3 rounded-full transition-all duration-300"
-                    style={{ width: `${selectedProject.paymentProgress}%` }}
+                    style={{ width: `${selectedProject.paymentProgress ?? 0}%` }}
                   ></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
                     <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Amount Paid</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">₹{selectedProject.amountPaid.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">₹{(selectedProject.amountPaid ?? 0).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Final Amount</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">₹{selectedProject.finalAmount.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">₹{(selectedProject.finalAmount ?? 0).toLocaleString()}</p>
                   </div>
                 </div>
               </div>

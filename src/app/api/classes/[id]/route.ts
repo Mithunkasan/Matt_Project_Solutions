@@ -63,6 +63,25 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+async function handlerCanAccessClass(handlerEmail: string, classId: string) {
+  const classSchedule = await prisma.classSchedule.findUnique({
+    where: { id: classId },
+    select: { studentEmail: true }
+  });
+
+  if (!classSchedule?.studentEmail) return false;
+
+  const project = await prisma.project.findFirst({
+    where: {
+      handlerEmail,
+      studentEmail: classSchedule.studentEmail
+    },
+    select: { id: true }
+  });
+
+  return Boolean(project);
+}
+
 // DELETE class by ID
 export async function DELETE(
   request: NextRequest,
@@ -70,11 +89,17 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.email || session.user.role !== "PROJECT_HANDLER") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { id } = await params; // Await the params
 
     if (!id) return NextResponse.json({ error: "ID not provided" }, { status: 400 });
+
+    if (!(await handlerCanAccessClass(session.user.email, id))) {
+      return NextResponse.json({ error: "Class schedule is not assigned to this project handler" }, { status: 403 });
+    }
 
     await prisma.classSchedule.delete({ where: { id } });
 
@@ -92,11 +117,17 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.email || session.user.role !== "PROJECT_HANDLER") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { id } = await params; // Await the params
 
     if (!id) return NextResponse.json({ error: "ID not provided" }, { status: 400 });
+
+    if (!(await handlerCanAccessClass(session.user.email, id))) {
+      return NextResponse.json({ error: "Class schedule is not assigned to this project handler" }, { status: 403 });
+    }
 
     const data = await request.json();
 
@@ -133,6 +164,10 @@ export async function GET(
     const { id } = await params; // Await the params
 
     if (!id) return NextResponse.json({ error: "ID not provided" }, { status: 400 });
+
+    if (session.user.role === "PROJECT_HANDLER" && !(await handlerCanAccessClass(session.user.email, id))) {
+      return NextResponse.json({ error: "Class schedule is not assigned to this project handler" }, { status: 403 });
+    }
 
     const classSchedule = await prisma.classSchedule.findUnique({
       where: { id },

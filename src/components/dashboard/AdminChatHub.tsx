@@ -284,7 +284,7 @@ export function AdminChatHub() {
             {/* Message Viewport */}
             <div className="flex-1 p-4 overflow-y-auto space-y-3">
               {messages.map((msg) => {
-                const isAdminMsg = msg.senderRole === "ADMIN";
+                const isAdminMsg = msg.senderRole !== "STUDENT";
                 return (
                   <div 
                     key={msg.id}

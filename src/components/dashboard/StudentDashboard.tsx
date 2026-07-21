@@ -65,6 +65,30 @@ interface NotificationItem {
   createdAt: string;
 }
 
+interface SharedFileItem {
+  id: string;
+  projectId: string;
+  studentEmail: string;
+  handlerEmail: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  message: string | null;
+  createdAt: string;
+}
+
+interface ProgressUpdateItem {
+  id: string;
+  projectId: string;
+  studentEmail: string;
+  handlerEmail: string;
+  status: string;
+  progress: number;
+  title: string;
+  details: string;
+  createdAt: string;
+}
+
 interface ChatMessage {
   id: string;
   message: string;
@@ -87,17 +111,23 @@ interface StudentDashboardProps {
   };
   projects: ProjectWithFiles[];
   courses: CourseItem[];
+  classSchedules: ClassSchedule[];
   meetings: MeetingItem[];
   notifications: NotificationItem[];
+  sharedFiles: SharedFileItem[];
+  progressUpdates: ProgressUpdateItem[];
   onRefreshData: () => Promise<void>;
 }
 
 export function StudentDashboard({ 
   session, 
   projects, 
-  courses, 
+  courses,
+  classSchedules,
   meetings, 
   notifications: initialNotifications,
+  sharedFiles,
+  progressUpdates,
   onRefreshData
 }: StudentDashboardProps) {
   const [activeSubTab, setActiveSubTab] = useState<"project" | "course">("project");
@@ -120,6 +150,8 @@ export function StudentDashboard({
 
   const activeProject = projects[0]; // Take the first project assigned
   const activeCourse = courses[0];   // Take the first course enrolled
+  const projectSharedFiles = activeProject ? sharedFiles.filter(file => file.projectId === activeProject.id) : [];
+  const projectProgressUpdates = activeProject ? progressUpdates.filter(update => update.projectId === activeProject.id) : [];
   
   // Determine tabs
   const hasProject = projects.length > 0;
@@ -460,7 +492,7 @@ export function StudentDashboard({
                 </div>
 
                 {/* Payment Status Info (if applicable) */}
-                {activeProject.finalAmount > 0 && (
+                {(activeProject.finalAmount ?? 0) > 0 && (
                   <div className="bg-gray-50 dark:bg-gray-950 rounded-2xl p-5 border border-gray-100 dark:border-gray-850 space-y-4">
                     <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center space-x-2">
                       <CreditCard className="w-4 h-4 text-[#12498b]" />
@@ -469,29 +501,98 @@ export function StudentDashboard({
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
                         <p className="text-gray-400 font-bold uppercase text-[9px]">Total Value</p>
-                        <p className="font-bold text-gray-900 dark:text-white mt-1">₹{activeProject.finalAmount}</p>
+                        <p className="font-bold text-gray-900 dark:text-white mt-1">₹{activeProject.finalAmount ?? 0}</p>
                       </div>
                       <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
                         <p className="text-green-500 font-bold uppercase text-[9px]">Paid</p>
-                        <p className="font-bold text-green-600 dark:text-green-400 mt-1">₹{activeProject.amountPaid}</p>
+                        <p className="font-bold text-green-600 dark:text-green-400 mt-1">₹{activeProject.amountPaid ?? 0}</p>
                       </div>
                       <div className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
                         <p className="text-red-500 font-bold uppercase text-[9px]">Balance</p>
-                        <p className="font-bold text-red-650 dark:text-red-400 mt-1">₹{activeProject.finalAmount - activeProject.amountPaid}</p>
+                        <p className="font-bold text-red-650 dark:text-red-400 mt-1">₹{(activeProject.finalAmount ?? 0) - (activeProject.amountPaid ?? 0)}</p>
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
                         <span>Payment Completed</span>
-                        <span>{activeProject.paymentProgress}%</span>
+                        <span>{activeProject.paymentProgress ?? 0}%</span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-green-500 transition-all duration-300" 
-                          style={{ width: `${activeProject.paymentProgress}%` }}
+                          style={{ width: `${activeProject.paymentProgress ?? 0}%` }}
                         />
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                    <span>Project Progress Updates</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">Latest status notes shared by your project handler.</p>
+                </div>
+
+                {projectProgressUpdates.length > 0 ? (
+                  <div className="space-y-4">
+                    {projectProgressUpdates.map((update) => (
+                      <div key={update.id} className="p-4 bg-gray-50 dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">{update.title}</h4>
+                          <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-full">
+                            {update.progress}%
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status: {update.status}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{update.details}</p>
+                        <p className="text-[10px] text-gray-400">{new Date(update.createdAt).toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400 text-sm">
+                    No progress updates shared yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                    <Paperclip className="w-5 h-5 text-indigo-600" />
+                    <span>Files Shared by Handler</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">ZIP files, images, documents, and other project files sent by your handler.</p>
+                </div>
+
+                {projectSharedFiles.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {projectSharedFiles.map((file) => (
+                      <div key={file.id} className="flex items-center justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{file.fileName}</p>
+                          <p className="text-[10px] text-gray-400 uppercase font-bold">{file.fileType}</p>
+                          {file.message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{file.message}</p>}
+                        </div>
+                        <a
+                          href={file.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-full shadow transition-colors flex items-center justify-center cursor-pointer shrink-0"
+                          title={`Open ${file.fileName}`}
+                        >
+                          <FileDown className="w-4 h-4" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400 text-sm">
+                    No handler files shared yet.
                   </div>
                 )}
               </div>
@@ -550,6 +651,49 @@ export function StudentDashboard({
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* HANDLER CLASS SCHEDULES — shown in project tab */}
+          {activeSubTab === "project" && classSchedules.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  <span>Class Schedules from Your Handler</span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Upcoming class sessions assigned to you by your project handler.</p>
+              </div>
+              <div className="space-y-4">
+                {classSchedules.map((schedule) => (
+                  <div
+                    key={schedule.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-indigo-50/40 dark:bg-indigo-950/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 gap-4"
+                  >
+                    <div className="flex items-start space-x-3.5">
+                      <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[10px] font-bold uppercase">{schedule.day.slice(0, 3)}</span>
+                        <span className="text-sm font-extrabold">{new Date(schedule.date).getDate()}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white">{schedule.project}</h4>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                          <span>Faculty: {schedule.faculty}</span>
+                          <span>•</span>
+                          <span>Time: {schedule.time}</span>
+                          <span>•</span>
+                          <span>Dept: {schedule.department}</span>
+                          <span>•</span>
+                          <span>Date: {new Date(schedule.date).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="bg-indigo-100 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 text-xs px-3.5 py-1.5 rounded-full font-bold border border-indigo-200 dark:border-indigo-900/40 self-start sm:self-center">
+                      {schedule.location}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -649,13 +793,58 @@ export function StudentDashboard({
 
           {/* No Assigned Products Message */}
           {!hasProject && !hasCourse && (
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
-              <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto" />
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Under Admin Review</h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto">
-                Hello! Your registration was successful. The administrator is currently assigning your project files or course syllabus details.
-                Please check back shortly or email support.
-              </p>
+            <div className="space-y-8">
+              <div className="bg-white dark:bg-gray-900 rounded-3xl p-12 text-center border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
+                <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto" />
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Under Admin Review</h3>
+                <p className="text-sm text-gray-500 max-w-md mx-auto">
+                  Hello! Your registration was successful. The administrator is currently assigning your project files or course syllabus details.
+                  Please check back shortly or email support.
+                </p>
+              </div>
+
+              {/* Still show handler schedules even when no project/course assigned */}
+              {classSchedules.length > 0 && (
+                <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+                      <Calendar className="w-5 h-5 text-indigo-600" />
+                      <span>Class Schedules from Your Handler</span>
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">Upcoming class sessions assigned to you by your project handler.</p>
+                  </div>
+                  <div className="space-y-4">
+                    {classSchedules.map((schedule) => (
+                      <div
+                        key={schedule.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-indigo-50/40 dark:bg-indigo-950/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 gap-4"
+                      >
+                        <div className="flex items-start space-x-3.5">
+                          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex flex-col items-center justify-center shrink-0">
+                            <span className="text-[10px] font-bold uppercase">{schedule.day.slice(0, 3)}</span>
+                            <span className="text-sm font-extrabold">{new Date(schedule.date).getDate()}</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">{schedule.project}</h4>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                              <span>Faculty: {schedule.faculty}</span>
+                              <span>•</span>
+                              <span>Time: {schedule.time}</span>
+                              <span>•</span>
+                              <span>Dept: {schedule.department}</span>
+                              <span>•</span>
+                              <span>Date: {new Date(schedule.date).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <span className="bg-indigo-100 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 text-xs px-3.5 py-1.5 rounded-full font-bold border border-indigo-200 dark:border-indigo-900/40 self-start sm:self-center">
+                          {schedule.location}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -777,7 +966,7 @@ export function StudentDashboard({
             <div ref={chatViewportRef} className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50/30 dark:bg-gray-950/10">
               {messages.length > 0 ? (
                 messages.map((msg) => {
-                  const isAdminMsg = msg.senderRole === "ADMIN";
+                  const isAdminMsg = msg.senderRole !== "STUDENT";
                   return (
                     <div 
                       key={msg.id}

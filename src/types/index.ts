@@ -52,14 +52,15 @@ export interface Project {
   college: string
   department: string
   handler: string
+  handlerEmail?: string
   team: string
   student: string
   studentEmail?: string
   date: string
-  amountPaid: number
-  finalAmount: number
-  paymentProgress: number
-  status: 'pending' | 'ongoing' | 'completed'
+  amountPaid?: number
+  finalAmount?: number
+  paymentProgress?: number
+  status: string
   createdAt?: string
   updatedAt?: string
   files?: ProjectFile[]

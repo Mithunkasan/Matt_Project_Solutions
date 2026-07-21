@@ -2,8 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
+import { getFileType, uploadToCloudinary } from "@/lib/cloudinary";
+
+async function getAssignedStudents(handlerEmail: string) {
+  const projects = await prisma.project.findMany({
+    where: { handlerEmail, studentEmail: { not: null } },
+    select: { studentEmail: true, student: true }
+  });
+
+  const seen = new Set<string>();
+  return projects
+    .map(project => ({
+      email: project.studentEmail?.toLowerCase().trim(),
+      name: project.student
+    }))
+    .filter((student): student is { email: string; name: string } => {
+      if (!student.email || seen.has(student.email)) return false;
+      seen.add(student.email);
+      return true;
+    });
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,11 +34,16 @@ export async function GET(request: NextRequest) {
     const mode = searchParams.get("mode"); // "threads" or "messages"
     const studentEmailParam = searchParams.get("studentEmail");
 
-    if (session.user.role === "ADMIN") {
+    if (session.user.role === "ADMIN" || session.user.role === "PROJECT_HANDLER") {
+      const isHandler = session.user.role === "PROJECT_HANDLER";
+      const assignedStudents = isHandler ? await getAssignedStudents(session.user.email) : [];
+      const assignedEmails = assignedStudents.map(student => student.email);
+
       if (mode === "threads") {
         // Fetch unique student emails from messages
         const threads = await prisma.chatMessage.groupBy({
           by: ["studentEmail"],
+          where: isHandler ? { studentEmail: { in: assignedEmails } } : undefined,
           _max: {
             createdAt: true
           }
@@ -48,10 +71,12 @@ export async function GET(request: NextRequest) {
         });
 
         // Also add other registered students who don't have messages yet
-        const allStudents = await prisma.user.findMany({
-          where: { role: "STUDENT" },
-          select: { email: true, name: true }
-        });
+        const allStudents = isHandler
+          ? assignedStudents.map(student => ({ email: student.email, name: student.name }))
+          : await prisma.user.findMany({
+              where: { role: "STUDENT" },
+              select: { email: true, name: true }
+            });
 
         allStudents.forEach(student => {
           if (!threadList.some(t => t.studentEmail === student.email)) {
@@ -70,11 +95,16 @@ export async function GET(request: NextRequest) {
       }
 
       if (!studentEmailParam) {
-        return NextResponse.json({ error: "studentEmail is required for Admin" }, { status: 400 });
+        return NextResponse.json({ error: "studentEmail is required" }, { status: 400 });
+      }
+
+      const cleanStudentEmailParam = studentEmailParam.toLowerCase().trim();
+      if (isHandler && !assignedEmails.includes(cleanStudentEmailParam)) {
+        return NextResponse.json({ error: "Student is not assigned to this project handler" }, { status: 403 });
       }
 
       const messages = await prisma.chatMessage.findMany({
-        where: { studentEmail: studentEmailParam.toLowerCase().trim() },
+        where: { studentEmail: cleanStudentEmailParam },
         orderBy: { createdAt: "asc" }
       });
       return NextResponse.json(messages);
@@ -110,35 +140,19 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       messageText = (formData.get("message") as string) || "";
       const emailParam = formData.get("studentEmail") as string;
-      studentEmail = session.user.role === "ADMIN" ? emailParam : session.user.email;
+      studentEmail = session.user.role === "ADMIN" || session.user.role === "PROJECT_HANDLER" ? emailParam : session.user.email;
       
       const file = formData.get("file") as File;
       if (file) {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const timestamp = Date.now();
-        const cleanFileName = `${timestamp}_${file.name.replace(/\s+/g, "_")}`;
-        const uploadDir = path.join(process.cwd(), "public", "uploads", "chat");
-        
-        await fs.mkdir(uploadDir, { recursive: true });
-        const filePath = path.join(uploadDir, cleanFileName);
-        await fs.writeFile(filePath, buffer);
-        
-        fileUrl = `/uploads/chat/${cleanFileName}`;
+        const upload = await uploadToCloudinary(file, "chat");
+        fileUrl = upload.secure_url;
         fileName = file.name;
-        
-        if (file.type.startsWith("image/")) {
-          fileType = "image";
-        } else if (file.type.startsWith("audio/")) {
-          fileType = "audio";
-        } else {
-          fileType = "document";
-        }
+        fileType = getFileType(file);
       }
     } else {
       const body = await request.json();
       messageText = body.message || "";
-      studentEmail = session.user.role === "ADMIN" ? body.studentEmail : session.user.email;
+      studentEmail = session.user.role === "ADMIN" || session.user.role === "PROJECT_HANDLER" ? body.studentEmail : session.user.email;
     }
 
     if (!studentEmail) {
@@ -150,7 +164,15 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = studentEmail.toLowerCase().trim();
-    const role = session.user.role as "ADMIN" | "STUDENT"; // ADMIN or STUDENT
+
+    if (session.user.role === "PROJECT_HANDLER") {
+      const assignedStudents = await getAssignedStudents(session.user.email);
+      if (!assignedStudents.some(student => student.email === cleanEmail)) {
+        return NextResponse.json({ error: "Student is not assigned to this project handler" }, { status: 403 });
+      }
+    }
+
+    const role = session.user.role as "ADMIN" | "PROJECT_HANDLER" | "STUDENT";
 
     const chatMessage = await prisma.chatMessage.create({
       data: {

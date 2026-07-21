@@ -63,6 +63,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+async function getAssignedStudentEmails(handlerEmail: string) {
+  const projects = await prisma.project.findMany({
+    where: { handlerEmail, studentEmail: { not: null } },
+    select: { studentEmail: true }
+  });
+  return projects.map(project => project.studentEmail).filter((email): email is string => Boolean(email));
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -71,8 +79,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Filter by student email if user is a student
-    const where = session.user.role === 'ADMIN' ? {} : { studentEmail: session.user.email };
+    let where = {};
+    if (session.user.role === 'PROJECT_HANDLER') {
+      const studentEmails = await getAssignedStudentEmails(session.user.email);
+      where = { studentEmail: { in: studentEmails } };
+    } else if (session.user.role !== 'ADMIN') {
+      where = { studentEmail: session.user.email };
+    }
 
     const classes = await prisma.classSchedule.findMany({
       where,
@@ -93,16 +106,22 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.role !== 'PROJECT_HANDLER') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const data = await request.json()
+    const studentEmail = data.studentEmail ? String(data.studentEmail).toLowerCase().trim() : null;
+
+    const studentEmails = await getAssignedStudentEmails(session.user.email);
+    if (!studentEmail || !studentEmails.includes(studentEmail)) {
+      return NextResponse.json({ error: 'Student is not assigned to this project handler' }, { status: 403 })
+    }
 
     const classSchedule = await prisma.classSchedule.create({
       data: {
         ...data,
-        studentEmail: data.studentEmail || null,
+        studentEmail,
         date: new Date(data.date)
       }
     })

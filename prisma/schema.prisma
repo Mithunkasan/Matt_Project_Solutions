@@ -67,6 +67,7 @@ model Project {
   college         String
   department      String
   handler         String
+  handlerEmail    String?
   team            String
   student         String
   date            DateTime
@@ -78,6 +79,8 @@ model Project {
   updatedAt       DateTime      @updatedAt
   studentEmail    String?
   files           ProjectFile[]
+  progressUpdates ProjectProgressUpdate[]
+  sharedFiles     SharedStudentFile[]
 
   @@map("projects")
 }
@@ -120,13 +123,27 @@ model workshops {
 
 enum Role {
   ADMIN
+  PROJECT_HANDLER
   STUDENT
+}
+
+model ProjectHandlerInvite {
+  id        String    @id @default(cuid())
+  email     String
+  name      String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("project_handler_invites")
 }
 
 model InternshipApplication {
   id          String   @id @default(cuid())
   fullName    String
   collegeName String
+  department  String?
   yearOfStudy String
   email       String
   phoneNumber String
@@ -178,6 +195,53 @@ model ProjectFile {
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_files")
+}
+
+model SharedStudentFile {
+  id           String   @id @default(cuid())
+  projectId    String
+  studentEmail String
+  handlerEmail String
+  fileName     String
+  fileUrl      String
+  fileType     String
+  message      String?
+  createdAt    DateTime @default(now())
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("shared_student_files")
+}
+
+model ProjectProgressUpdate {
+  id           String   @id @default(cuid())
+  projectId    String
+  studentEmail String
+  handlerEmail String
+  status       String
+  progress     Int
+  title        String
+  details      String
+  createdAt    DateTime @default(now())
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_progress_updates")
+}
+
+model HandlerWorkshop {
+  id               String   @id @default(cuid())
+  date             DateTime
+  time             String
+  handlerEmail     String
+  handlerName      String
+  participantNames String
+  college          String
+  department       String
+  topic            String
+  duration         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("handler_workshops")
 }
 
 model Course {
@@ -248,5 +312,3 @@ model Meeting {
 
   @@map("meetings")
 }
-
-

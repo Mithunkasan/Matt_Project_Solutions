@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AddClassForm } from "../../components/forms/AddClassForm";
 import { ClassSchedule } from "@/types";
+import { Project } from "@/types";
 
 interface AddClassDialogProps {
   onClassAdded: (classItem: ClassSchedule) => void;
+  projects?: Project[];
 }
 
-export function AddClassDialog({ onClassAdded }: AddClassDialogProps) {
+export function AddClassDialog({ onClassAdded, projects = [] }: AddClassDialogProps) {
   const [open, setOpen] = useState(false);
 
   const handleClassAdded = (classItem: ClassSchedule) => {
@@ -32,7 +34,7 @@ export function AddClassDialog({ onClassAdded }: AddClassDialogProps) {
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Add Class Schedule</DialogTitle>
         </DialogHeader>
         <div className="mt-4">
-          <AddClassForm onClassAdded={handleClassAdded} onCancel={() => setOpen(false)} />
+          <AddClassForm onClassAdded={handleClassAdded} onCancel={() => setOpen(false)} projects={projects} />
         </div>
       </DialogContent>
     </Dialog>

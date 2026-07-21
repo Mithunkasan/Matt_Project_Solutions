@@ -72,12 +72,11 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Force all other users to STUDENT role
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: "STUDENT",
+          role: user.role,
         };
       }
     })
@@ -119,7 +118,7 @@ export const authOptions: NextAuthOptions = {
             : null;
 
         const email = dbUser?.email?.toLowerCase().trim() || token.email?.toLowerCase().trim();
-        token.role = (email === "admin@mattengg.com") ? "ADMIN" : "STUDENT";
+        token.role = dbUser?.role ?? ((email === "admin@mattengg.com") ? "ADMIN" : "STUDENT");
       }
 
       return token;

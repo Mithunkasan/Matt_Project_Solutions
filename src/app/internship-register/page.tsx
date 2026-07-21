@@ -3,12 +3,13 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, User, GraduationCap, Calendar, Mail, Phone, CheckCircle } from "lucide-react";
+import { ArrowLeft, User, GraduationCap, Calendar, Mail, Phone, CheckCircle, Building2 } from "lucide-react";
 
 export default function InternshipRegisterPage() {
   const [formData, setFormData] = useState({
     fullName: "",
     collegeName: "",
+    department: "",
     yearOfStudy: "1st Year",
     email: "",
     phoneNumber: "",
@@ -162,6 +163,26 @@ export default function InternshipRegisterPage() {
                     required
                     placeholder="Enter your college name"
                     value={formData.collegeName}
+                    onChange={handleChange}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg placeholder-gray-400 text-gray-950 dark:text-white focus:outline-none focus:border-blue-500 text-sm transition-colors"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Department */}
+              <div>
+                <label htmlFor="department" className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wider">
+                  Department
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    id="department"
+                    name="department"
+                    type="text"
+                    placeholder="e.g. Computer Science, Mechanical"
+                    value={formData.department}
                     onChange={handleChange}
                     className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg placeholder-gray-400 text-gray-950 dark:text-white focus:outline-none focus:border-blue-500 text-sm transition-colors"
                     disabled={loading}
