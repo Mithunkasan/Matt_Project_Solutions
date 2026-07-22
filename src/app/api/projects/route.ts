@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      const origin = process.env.NEXTAUTH_URL || 'https://matt-projects-dashboard-3jae.vercel.app';
       const inviteLink = `${origin}/project-handler/invite?token=${token}`;
       sendProjectHandlerInviteEmail(handlerEmail, data.handler, inviteLink)
         .catch(err => console.error('Async project handler invite error:', err));
