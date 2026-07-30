@@ -17,6 +17,7 @@ const NO_LAYOUT_ROUTES = new Set([
   "/services",
   "/internship",
   "/courses",
+  "/gallery",
   "/contact",
 ]);
 

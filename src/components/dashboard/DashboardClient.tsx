@@ -129,6 +129,17 @@ interface OfferItem {
   updatedAt: string;
 }
 
+interface MainGridSlideItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  description: string;
+  badge: string;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface InternshipRegistrationItem {
   id: string;
   fullName: string;
@@ -183,7 +194,7 @@ export function DashboardClient() {
   const [selectedTeam, setSelectedTeam] = useState("All MATT Teams");
   const [selectedStatus, setSelectedStatus] = useState("All Statuses");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"projects" | "classes" | "courses" | "meetings" | "chat" | "links" | "announcements" | "offers" | "internships" | "activity" | "workshops">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "classes" | "courses" | "meetings" | "chat" | "links" | "announcements" | "offers" | "mainGrid" | "internships" | "activity" | "workshops">("projects");
 
   // Custom States for Courses, Meetings, Notifications
   const [courses, setCourses] = useState<CourseItem[]>([]);
@@ -206,10 +217,12 @@ export function DashboardClient() {
   const [landingLinks, setLandingLinks] = useState<ImportantLinkItem[]>([]);
   const [landingAnnouncements, setLandingAnnouncements] = useState<AnnouncementItem[]>([]);
   const [landingOffers, setLandingOffers] = useState<OfferItem[]>([]);
+  const [mainGridSlides, setMainGridSlides] = useState<MainGridSlideItem[]>([]);
   const [internshipRegistrations, setInternshipRegistrations] = useState<InternshipRegistrationItem[]>([]);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [isMainGridModalOpen, setIsMainGridModalOpen] = useState(false);
   const [linkForm, setLinkForm] = useState<{ id?: string; title: string; url: string }>({ title: "", url: "" });
   const [annForm, setAnnForm] = useState<{ id?: string; month: string; day: string; title: string; href: string }>({
     month: "",
@@ -221,8 +234,19 @@ export function DashboardClient() {
     text: "",
     link: "",
   });
+  const [mainGridForm, setMainGridForm] = useState<{ id?: string; title: string; imageUrl: string; description: string; badge: string; sortOrder: number }>({
+    title: "",
+    imageUrl: "",
+    description: "",
+    badge: "Student Spotlight",
+    sortOrder: 0,
+  });
   const [mgmtError, setMgmtError] = useState("");
   const [mgmtLoading, setMgmtLoading] = useState(false);
+  const [selectedSlideFile, setSelectedSlideFile] = useState<File | null>(null);
+  const [internshipSearchQuery, setInternshipSearchQuery] = useState("");
+  const [selectedInternshipDept, setSelectedInternshipDept] = useState("All Departments");
+  const [selectedInternshipYear, setSelectedInternshipYear] = useState("All Years");
   const [workshopForm, setWorkshopForm] = useState({
     id: "",
     date: "",
@@ -259,6 +283,15 @@ export function DashboardClient() {
     try {
       const res = await fetch("/api/landing/offers");
       if (res.ok) setLandingOffers(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchMainGridSlides = async () => {
+    try {
+      const res = await fetch("/api/landing/main-grid-slides");
+      if (res.ok) setMainGridSlides(await res.json());
     } catch (e) {
       console.error(e);
     }
@@ -363,6 +396,7 @@ export function DashboardClient() {
             promises.push(fetchLinks());
             promises.push(fetchAnnouncements());
             promises.push(fetchOffers());
+            promises.push(fetchMainGridSlides());
             promises.push(fetchInternshipRegistrations());
             promises.push(fetchProjectHandlers());
           }
@@ -569,6 +603,101 @@ export function DashboardClient() {
         await fetchOffers();
       } else {
         alert("Failed to delete offer");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // MainGrid Slide Actions
+  const openMainGridModal = (item?: MainGridSlideItem) => {
+    if (item) {
+      setMainGridForm({
+        id: item.id,
+        title: item.title,
+        imageUrl: item.imageUrl,
+        description: item.description,
+        badge: item.badge || "Student Spotlight",
+        sortOrder: item.sortOrder || 0,
+      });
+    } else {
+      setMainGridForm({
+        title: "",
+        imageUrl: "",
+        description: "",
+        badge: "Student Spotlight",
+        sortOrder: mainGridSlides.length,
+      });
+    }
+    setSelectedSlideFile(null);
+    setMgmtError("");
+    setIsMainGridModalOpen(true);
+  };
+
+  const handleMainGridSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMgmtLoading(true);
+    setMgmtError("");
+
+    const isEdit = !!mainGridForm.id;
+    const method = isEdit ? "PUT" : "POST";
+
+    let currentImageUrl = mainGridForm.imageUrl;
+
+    try {
+      if (selectedSlideFile) {
+        const formData = new FormData();
+        formData.append("file", selectedSlideFile);
+
+        const uploadRes = await fetch("/api/landing/main-grid-slides/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          throw new Error(uploadData.error || "Failed to upload image file");
+        }
+
+        const { fileUrl } = await uploadRes.json();
+        currentImageUrl = fileUrl;
+      } else if (!currentImageUrl) {
+        throw new Error("An image file is required.");
+      }
+
+      const res = await fetch("/api/landing/main-grid-slides", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...mainGridForm,
+          imageUrl: currentImageUrl,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        await fetchMainGridSlides();
+        setIsMainGridModalOpen(false);
+        setSelectedSlideFile(null);
+      } else {
+        setMgmtError(data.error || "Failed to save MainGrid slide");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Network error. Please try again.";
+      setMgmtError(errorMessage);
+    } finally {
+      setMgmtLoading(false);
+    }
+  };
+
+  const handleMainGridDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this MainGrid slide?")) return;
+    try {
+      const res = await fetch(`/api/landing/main-grid-slides?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchMainGridSlides();
+      } else {
+        alert("Failed to delete MainGrid slide");
       }
     } catch (e) {
       console.error(e);
@@ -918,6 +1047,42 @@ export function DashboardClient() {
     }))
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  const distinctInternshipDepts = Array.from(
+    new Set(
+      internshipRegistrations
+        .map((reg) => reg.department)
+        .filter((dept): dept is string => typeof dept === "string" && dept.trim() !== "")
+    )
+  ).sort();
+
+  const distinctInternshipYears = Array.from(
+    new Set(
+      internshipRegistrations
+        .map((reg) => reg.yearOfStudy)
+        .filter((year): year is string => typeof year === "string" && year.trim() !== "")
+    )
+  ).sort();
+
+  const filteredInternships = internshipRegistrations.filter((reg) => {
+    const matchesSearch =
+      !internshipSearchQuery ||
+      reg.fullName.toLowerCase().includes(internshipSearchQuery.toLowerCase()) ||
+      reg.collegeName.toLowerCase().includes(internshipSearchQuery.toLowerCase()) ||
+      reg.email.toLowerCase().includes(internshipSearchQuery.toLowerCase()) ||
+      reg.phoneNumber.includes(internshipSearchQuery) ||
+      (reg.department && reg.department.toLowerCase().includes(internshipSearchQuery.toLowerCase()));
+
+    const matchesDept =
+      selectedInternshipDept === "All Departments" ||
+      reg.department === selectedInternshipDept;
+
+    const matchesYear =
+      selectedInternshipYear === "All Years" ||
+      reg.yearOfStudy === selectedInternshipYear;
+
+    return matchesSearch && matchesDept && matchesYear;
+  });
+
   const showStatsCards = isAdmin && activeTab === "projects";
 
   if (!isAdmin && !isProjectHandler) {
@@ -1060,6 +1225,15 @@ export function DashboardClient() {
                   }`}
               >
                 Offers
+              </button>
+              <button
+                onClick={() => setActiveTab("mainGrid")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 shrink-0 ${activeTab === "mainGrid"
+                  ? "bg-sky-600 text-white shadow-sm"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+                  }`}
+              >
+                MainGrid
               </button>
               <button
                 onClick={() => setActiveTab("internships")}
@@ -1854,17 +2028,157 @@ export function DashboardClient() {
         </div>
       )}
 
+      {/* MainGrid Slides Management Tab */}
+      {activeTab === "mainGrid" && isAdmin && (
+        <div className="space-y-6 lg:space-y-8 animate-fadeIn">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm flex justify-between items-center transition-colors">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">MainGrid Slides</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Manage the image, badge, title, and description shown over the MainGrid slider images</p>
+            </div>
+            <button
+              onClick={() => openMainGridModal()}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Add Slide
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 w-28">Preview</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Content</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Image Path</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 w-24 text-center">Order</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {mainGridSlides.map((slide) => (
+                    <tr key={slide.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <img
+                          src={slide.imageUrl}
+                          alt={slide.title}
+                          className="w-20 h-14 object-cover rounded-md border border-gray-200 dark:border-gray-700 bg-slate-100"
+                        />
+                      </td>
+                      <td className="px-6 py-4 max-w-md">
+                        <span className="font-semibold text-sm text-gray-900 dark:text-white block">{slide.title}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block mt-1">{slide.badge}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{slide.description}</span>
+                        {slide.id.startsWith("default-slide-") && (
+                          <span className="inline-block mt-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
+                            Default
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400 font-mono">{slide.imageUrl}</td>
+                      <td className="px-6 py-4 text-center text-xs font-bold text-gray-700 dark:text-gray-300">{slide.sortOrder}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="inline-flex gap-2 justify-end">
+                          <button
+                            onClick={() => openMainGridModal(slide)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Slide"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleMainGridDelete(slide.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Slide"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {mainGridSlides.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-10 text-gray-500 text-xs">No MainGrid slides found. Add one above!</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 6. Internship Registrations Management Tab */}
       {activeTab === "internships" && isAdmin && (
         <div className="space-y-6 lg:space-y-8 animate-fadeIn">
           {/* Header Action Strip */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm flex justify-between items-center transition-colors">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-colors">
             <div>
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">Internship Registrations</h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">View and manage student registrations submitted via the Internship QR Code</p>
             </div>
             <div className="text-xs font-bold px-3 py-1.5 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg">
-              Total registrations: {internshipRegistrations.length}
+              Showing {filteredInternships.length} of {internshipRegistrations.length} registrations
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+            {/* Search Input */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 h-4 w-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search name, college, email, phone..."
+                value={internshipSearchQuery}
+                onChange={(e) => setInternshipSearchQuery(e.target.value)}
+                className="w-full h-10 pl-9 pr-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-black dark:text-white placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+
+            {/* Department Filter */}
+            <div className="relative min-w-[160px]">
+              <select
+                className="w-full h-10 pl-3 pr-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-black dark:text-white outline-none cursor-pointer appearance-none transition-all focus:border-blue-500 hover:border-gray-300 dark:hover:border-gray-600 font-medium"
+                value={selectedInternshipDept}
+                onChange={(e) => setSelectedInternshipDept(e.target.value)}
+              >
+                <option value="All Departments">All Departments</option>
+                {distinctInternshipDepts.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Year Filter */}
+            <div className="relative min-w-[160px]">
+              <select
+                className="w-full h-10 pl-3 pr-8 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-black dark:text-white outline-none cursor-pointer appearance-none transition-all focus:border-blue-500 hover:border-gray-300 dark:hover:border-gray-600 font-medium"
+                value={selectedInternshipYear}
+                onChange={(e) => setSelectedInternshipYear(e.target.value)}
+              >
+                <option value="All Years">All Years</option>
+                {distinctInternshipYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -1885,7 +2199,7 @@ export function DashboardClient() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {internshipRegistrations.map((reg) => (
+                  {filteredInternships.map((reg) => (
                     <tr key={reg.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                       <td className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400">
                         {reg.createdAt ? new Date(reg.createdAt).toLocaleDateString('en-US', {
@@ -1929,9 +2243,13 @@ export function DashboardClient() {
                       </td>
                     </tr>
                   ))}
-                  {internshipRegistrations.length === 0 && (
+                  {filteredInternships.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="text-center py-10 text-gray-500 text-xs">No internship registrations found.</td>
+                      <td colSpan={8} className="text-center py-10 text-gray-500 text-xs">
+                        {internshipRegistrations.length === 0
+                          ? "No internship registrations found."
+                          : "No internship registrations match the selected filters."}
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -2168,6 +2486,119 @@ export function DashboardClient() {
                 className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-50 cursor-pointer mt-2"
               >
                 {mgmtLoading ? "Saving..." : "Save Offer"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MainGrid slide management Modal */}
+      {isMainGridModalOpen && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsMainGridModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-white cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-4">
+              {mainGridForm.id ? "Edit MainGrid Slide" : "Add MainGrid Slide"}
+            </h3>
+            {mgmtError && (
+              <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-2.5 rounded text-xs mb-4">
+                {mgmtError}
+              </div>
+            )}
+            <form onSubmit={handleMainGridSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Upload Slide Image {!mainGridForm.id && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  required={!mainGridForm.id}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedSlideFile(e.target.files[0]);
+                    }
+                  }}
+                  className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-sky-950/30 dark:file:text-sky-400 dark:hover:file:bg-sky-900/30 cursor-pointer"
+                />
+              </div>
+
+              {(selectedSlideFile || mainGridForm.imageUrl) && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Image Preview
+                  </label>
+                  <div className="relative aspect-[16/9.8] w-full rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={selectedSlideFile ? URL.createObjectURL(selectedSlideFile) : mainGridForm.imageUrl}
+                      alt="Slide Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Badge Text
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Student Spotlight"
+                  value={mainGridForm.badge}
+                  onChange={(e) => setMainGridForm({ ...mainGridForm, badge: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Project Guidance & Expert Counselling"
+                  value={mainGridForm.title}
+                  onChange={(e) => setMainGridForm({ ...mainGridForm, title: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Short text displayed over the image"
+                  value={mainGridForm.description}
+                  onChange={(e) => setMainGridForm({ ...mainGridForm, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  value={mainGridForm.sortOrder}
+                  onChange={(e) => setMainGridForm({ ...mainGridForm, sortOrder: Number(e.target.value) })}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={mgmtLoading}
+                className="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-md transition-colors disabled:opacity-50 cursor-pointer mt-2"
+              >
+                {mgmtLoading ? "Saving..." : "Save Slide"}
               </button>
             </form>
           </div>

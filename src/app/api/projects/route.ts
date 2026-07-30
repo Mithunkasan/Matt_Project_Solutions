@@ -255,7 +255,11 @@ export async function POST(request: NextRequest) {
       select: { id: true, role: true }
     });
 
-    if (!existingHandler || existingHandler.role !== 'PROJECT_HANDLER') {
+    const existingInvite = await prisma.projectHandlerInvite.findFirst({
+      where: { email: handlerEmail }
+    });
+
+    if (!existingInvite && (!existingHandler || existingHandler.role !== 'PROJECT_HANDLER')) {
       const token = crypto.randomBytes(32).toString('hex');
       await prisma.projectHandlerInvite.create({
         data: {
