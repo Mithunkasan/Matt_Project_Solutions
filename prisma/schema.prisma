@@ -185,6 +185,19 @@ model Offer {
   @@map("offers")
 }
 
+model MainGridSlide {
+  id          String   @id @default(cuid())
+  title       String
+  imageUrl    String
+  description String
+  badge       String   @default("Student Spotlight")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("main_grid_slides")
+}
+
 model ProjectFile {
   id         String   @id @default(cuid())
   projectId  String

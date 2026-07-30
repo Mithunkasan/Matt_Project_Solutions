@@ -51,6 +51,11 @@ export function NavigationMenu({ language, themeColor }: NavigationMenuProps) {
       href: "/courses",
     },
     {
+      id: "gallery",
+      label: isTa ? "கேலரி" : "GALLERY",
+      href: "/gallery",
+    },
+    {
       id: "contact",
       label: isTa ? "தொடர்பு" : "CONTACT",
       href: "/contact",

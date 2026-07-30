@@ -1,28 +1,8 @@
-// "use client";
-
-// import { Search } from "lucide-react";
-// import { AddProjectDialog } from "./AddProjectDialog";
-// import { useAppStore } from "@/lib/store";
-
-// interface FiltersSectionProps {
-//   selectedTeam: string;
-//   selectedStatus: string;
-//   onTeamChange: (team: string) => void;
-//   onStatusChange: (status: string) => void;
-//   onProjectAdded: (project: any) => void;
-// }
-
-// const teams = ["All MATT Teams", "HR", "AI", "Hardware", "Software", "JClicks", "CAD Point"];
-// const statuses = ["All Statuses", "Pending", "Ongoing", "Completed"];
-
-// export function FiltersSection({
-//   selectedTeam,
-//   selectedStatus,
-//   onTeamChange,
 "use client";
 
 import { Search } from "lucide-react";
 import { AddProjectDialog } from "./AddProjectDialog";
+import { AddHandlerDialog } from "./AddHandlerDialog";
 import { Project } from "@/types";
 import { useSession } from "next-auth/react";
 
@@ -119,9 +99,10 @@ export function FiltersSection({
             </div>
           </div>
 
-          {/* Add Project Button - Admin Only */}
+          {/* Add Project & Add Handler Buttons - Admin Only */}
           {session?.user?.role === 'ADMIN' && (
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <AddHandlerDialog />
               <AddProjectDialog onProjectAdded={handleProjectAdded} />
             </div>
           )}
