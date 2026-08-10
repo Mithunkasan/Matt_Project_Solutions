@@ -14,8 +14,13 @@ export async function GET() {
 
     const userHandlers = await prisma.user.findMany({
       where: { role: "PROJECT_HANDLER" },
-      select: { name: true, email: true },
+      select: { name: true, email: true, mobileNumber: true },
       orderBy: { name: "asc" }
+    });
+
+    const invitedHandlers = await prisma.projectHandlerInvite.findMany({
+      where: { usedAt: null },
+      select: { name: true, email: true, mobileNumber: true }
     });
 
     const projectHandlers = await prisma.project.findMany({
@@ -25,7 +30,7 @@ export async function GET() {
       orderBy: { handler: "asc" }
     });
 
-    const handlers = new Map<string, { name: string; email: string }>();
+    const handlers = new Map<string, { name: string; email: string; mobileNumber?: string | null }>();
 
     projectHandlers.forEach((handler) => {
       if (handler.handlerEmail) {
@@ -36,10 +41,19 @@ export async function GET() {
       }
     });
 
+    invitedHandlers.forEach((handler) => {
+      handlers.set(handler.email, {
+        email: handler.email,
+        name: handler.name,
+        mobileNumber: handler.mobileNumber
+      });
+    });
+
     userHandlers.forEach((handler) => {
       handlers.set(handler.email, {
         email: handler.email,
-        name: handler.name
+        name: handler.name,
+        mobileNumber: handler.mobileNumber
       });
     });
 
@@ -57,7 +71,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { email, name } = await request.json();
+    const { email, name, mobileNumber } = await request.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -65,6 +79,7 @@ export async function POST(request: NextRequest) {
 
     const cleanEmail = String(email).toLowerCase().trim();
     const cleanName = name ? String(name).trim() : cleanEmail.split("@")[0];
+    const cleanMobile = mobileNumber ? String(mobileNumber).trim() : null;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -91,6 +106,7 @@ export async function POST(request: NextRequest) {
         email: cleanEmail,
         name: cleanName,
         token,
+        mobileNumber: cleanMobile,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       }
     });

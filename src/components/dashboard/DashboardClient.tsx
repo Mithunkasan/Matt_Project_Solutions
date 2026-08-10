@@ -154,6 +154,7 @@ interface InternshipRegistrationItem {
 interface ProjectHandlerOption {
   name: string;
   email: string;
+  mobileNumber?: string | null;
 }
 
 interface WorkshopItem {
@@ -259,6 +260,9 @@ export function DashboardClient() {
     topic: "",
     duration: "",
   });
+  const [showHandlerDropdown, setShowHandlerDropdown] = useState(false);
+  const [handlerSearchQuery, setHandlerSearchQuery] = useState("");
+  const [pendingWhatsAppLinks, setPendingWhatsAppLinks] = useState<{ name: string; url: string }[]>([]);
 
   // Fetch functions for Landing Page Management
   const fetchLinks = async () => {
@@ -732,6 +736,8 @@ export function DashboardClient() {
       duration: "",
     });
     setMgmtError("");
+    setShowHandlerDropdown(false);
+    setHandlerSearchQuery("");
   };
 
   const handleWorkshopHandlerChange = (email: string) => {
@@ -763,10 +769,18 @@ export function DashboardClient() {
     e.preventDefault();
     setMgmtLoading(true);
     setMgmtError("");
+    setPendingWhatsAppLinks([]);
+
+    if (!workshopForm.handlerEmail) {
+      setMgmtError("Please select at least one Project Handler.");
+      setMgmtLoading(false);
+      return;
+    }
 
     try {
+      const isNew = !workshopForm.id;
       const res = await fetch("/api/workshops", {
-        method: workshopForm.id ? "PUT" : "POST",
+        method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(workshopForm),
       });
@@ -774,6 +788,35 @@ export function DashboardClient() {
       const data = await res.json();
       if (res.ok) {
         await fetchWorkshops();
+
+        // Trigger WhatsApp notifications only on creation
+        if (isNew) {
+          const emails = workshopForm.handlerEmail.split(',').map(e => e.trim().toLowerCase());
+          const names = workshopForm.handlerName.split(',').map(n => n.trim());
+          
+          const links: { name: string; url: string }[] = [];
+          emails.forEach((email, index) => {
+            const handler = projectHandlers.find(h => h.email.toLowerCase() === email);
+            const name = names[index] || handler?.name || "Project Handler";
+            const mobile = handler?.mobileNumber;
+            if (mobile) {
+              let cleaned = mobile.replace(/\D/g, "");
+              if (cleaned.length === 10) {
+                cleaned = "91" + cleaned;
+              }
+              const msg = `Hello ${name},\n\nYou have been assigned to conduct the following workshop:\n\nTopic: ${workshopForm.topic}\nDate: ${workshopForm.date}\nTime: ${workshopForm.time}\nCollege: ${workshopForm.college}\nDepartment: ${workshopForm.department}\nDuration: ${workshopForm.duration}\n\nRegards,\nAdmin`;
+              
+              const waUrl = `https://api.whatsapp.com/send?phone=${cleaned}&text=${encodeURIComponent(msg)}`;
+              links.push({ name, url: waUrl });
+              window.open(waUrl, "_blank");
+            }
+          });
+          
+          if (links.length > 0) {
+            setPendingWhatsAppLinks(links);
+          }
+        }
+
         resetWorkshopForm();
       } else {
         setMgmtError(data.error || "Failed to save workshop");
@@ -1404,6 +1447,34 @@ export function DashboardClient() {
                   {mgmtError}
                 </div>
               )}
+              {pendingWhatsAppLinks.length > 0 && (
+                <div className="mb-4 bg-teal-50 dark:bg-teal-950/20 border-l-4 border-teal-500 text-teal-800 dark:text-teal-400 p-4 rounded-lg text-sm">
+                  <div className="font-bold mb-1 text-teal-950 dark:text-teal-200">WhatsApp Notifications Ready:</div>
+                  <p className="text-xs mb-3 text-teal-700/80 dark:text-teal-300/80">
+                    If browser popup blocker blocked the WhatsApp redirect, click the button(s) below to open WhatsApp for each handler manually:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {pendingWhatsAppLinks.map((link, idx) => (
+                      <a
+                        key={idx}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-md text-xs font-semibold shadow-sm transition-all"
+                      >
+                        Send to {link.name}
+                      </a>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setPendingWhatsAppLinks([])}
+                      className="px-3 py-1.5 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md text-xs font-semibold transition-all"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
               <form onSubmit={handleWorkshopSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Date</label>
@@ -1425,21 +1496,105 @@ export function DashboardClient() {
                     className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Project Handler</label>
-                  <select
-                    required
-                    value={workshopForm.handlerEmail}
-                    onChange={(e) => handleWorkshopHandlerChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white"
+                <div className="relative">
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Project Handler(s) <span className="text-red-500">*</span></label>
+                  <div
+                    onClick={() => setShowHandlerDropdown(!showHandlerDropdown)}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm outline-none focus:border-blue-500 text-gray-900 dark:text-white cursor-pointer flex justify-between items-center min-h-[38px] transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
                   >
-                    <option value="">Select Project Handler</option>
-                    {projectHandlers.map((handler) => (
-                      <option key={handler.email} value={handler.email}>
-                        {handler.name} - {handler.email}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="truncate">
+                      {workshopForm.handlerEmail
+                        ? workshopForm.handlerName.split(',').length === 1
+                          ? `${workshopForm.handlerName} (${workshopForm.handlerEmail})`
+                          : `${workshopForm.handlerName.split(',').length} Handlers Selected`
+                        : "Select Project Handler(s)"}
+                    </span>
+                    <span className="text-xs text-gray-500">▼</span>
+                  </div>
+
+                  {showHandlerDropdown && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowHandlerDropdown(false)}
+                      />
+                      <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-3 max-h-60 overflow-y-auto">
+                        <input
+                          type="text"
+                          placeholder="Search handlers..."
+                          value={handlerSearchQuery}
+                          onChange={(e) => setHandlerSearchQuery(e.target.value)}
+                          className="w-full px-3 py-1.5 mb-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-xs outline-none text-gray-900 dark:text-white"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="space-y-2">
+                          {projectHandlers
+                            .filter(h => 
+                              h.name.toLowerCase().includes(handlerSearchQuery.toLowerCase()) || 
+                              h.email.toLowerCase().includes(handlerSearchQuery.toLowerCase())
+                            )
+                            .map((handler) => {
+                              const selectedEmails = workshopForm.handlerEmail
+                                ? workshopForm.handlerEmail.split(",").map(e => e.trim().toLowerCase())
+                                : [];
+                              const isSelected = selectedEmails.includes(handler.email.toLowerCase());
+
+                              return (
+                                <label
+                                  key={handler.email}
+                                  className="flex items-start gap-2 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-md cursor-pointer text-xs"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      let newEmails = [...selectedEmails];
+                                      if (isSelected) {
+                                        newEmails = newEmails.filter(e => e !== handler.email.toLowerCase());
+                                      } else {
+                                        newEmails.push(handler.email.toLowerCase());
+                                      }
+                                      
+                                      // Match back to correct case from projectHandlers
+                                      const finalEmails = newEmails.map(email => {
+                                        const matched = projectHandlers.find(h => h.email.toLowerCase() === email);
+                                        return matched ? matched.email : email;
+                                      });
+                                      const finalNames = finalEmails.map(email => {
+                                        const matched = projectHandlers.find(h => h.email === email);
+                                        return matched ? matched.name : email.split('@')[0];
+                                      });
+
+                                      setWorkshopForm(prev => ({
+                                        ...prev,
+                                        handlerEmail: finalEmails.join(","),
+                                        handlerName: finalNames.join(",")
+                                      }));
+                                    }}
+                                    className="mt-0.5 h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1 text-left">
+                                    <div className="font-semibold text-gray-900 dark:text-white">
+                                      {handler.name}
+                                    </div>
+                                    <div className="text-gray-500 dark:text-gray-400">
+                                      {handler.email}
+                                    </div>
+                                    <div className="text-teal-600 dark:text-teal-400 font-semibold mt-0.5">
+                                      Mobile: {handler.mobileNumber || "Not Available"}
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          {projectHandlers.length === 0 && (
+                            <div className="text-gray-500 text-center py-2 text-xs">No handlers available</div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Duration</label>

@@ -53,13 +53,15 @@ export async function POST(request: NextRequest) {
         update: {
           name: invite.name,
           password: hashedPassword,
-          role: "PROJECT_HANDLER"
+          role: "PROJECT_HANDLER",
+          mobileNumber: invite.mobileNumber
         },
         create: {
           email: invite.email,
           name: invite.name,
           password: hashedPassword,
-          role: "PROJECT_HANDLER"
+          role: "PROJECT_HANDLER",
+          mobileNumber: invite.mobileNumber
         }
       }),
       prisma.projectHandlerInvite.update({
