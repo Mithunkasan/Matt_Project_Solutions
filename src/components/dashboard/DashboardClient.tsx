@@ -264,6 +264,12 @@ export function DashboardClient() {
   const [handlerSearchQuery, setHandlerSearchQuery] = useState("");
   const [pendingWhatsAppLinks, setPendingWhatsAppLinks] = useState<{ name: string; url: string }[]>([]);
 
+  // Mobile number update states for project handler login prompt
+  const [showMobileModal, setShowMobileModal] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [savingMobile, setSavingMobile] = useState(false);
+  const [mobileError, setMobileError] = useState("");
+
   // Fetch functions for Landing Page Management
   const fetchLinks = async () => {
     try {
@@ -421,6 +427,61 @@ export function DashboardClient() {
   useEffect(() => {
     setSearchQuery("");
   }, [activeTab]);
+
+  useEffect(() => {
+    if (session?.user?.role === "PROJECT_HANDLER") {
+      const checkMobileNumber = async () => {
+        try {
+          const res = await fetch("/api/project-handler/profile");
+          if (res.ok) {
+            const data = await res.json();
+            if (data && !data.mobileNumber) {
+              setShowMobileModal(true);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to check handler mobile number:", err);
+        }
+      };
+      checkMobileNumber();
+    }
+  }, [session]);
+
+  const handleSaveMobile = async () => {
+    if (!mobileNumber.trim()) {
+      setMobileError("Mobile number is required");
+      return;
+    }
+    const digitsOnly = mobileNumber.replace(/\D/g, "");
+    if (digitsOnly.length < 10) {
+      setMobileError("Please enter a valid mobile number (at least 10 digits)");
+      return;
+    }
+
+    setSavingMobile(true);
+    setMobileError("");
+    try {
+      const res = await fetch("/api/project-handler/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobileNumber: digitsOnly })
+      });
+      if (res.ok) {
+        setShowMobileModal(false);
+        if (isAdmin) {
+          fetchProjectHandlers();
+        }
+      } else {
+        const data = await res.json();
+        setMobileError(data.error || "Failed to save mobile number");
+      }
+    } catch (err) {
+      console.error(err);
+      setMobileError("An error occurred while saving mobile number");
+    } finally {
+      setSavingMobile(false);
+    }
+  };
 
   const handleProjectUpdated = (projectId: string, updatedData: Partial<Project>) => {
     updateProject(projectId, updatedData);
@@ -1505,7 +1566,11 @@ export function DashboardClient() {
                     <span className="truncate">
                       {workshopForm.handlerEmail
                         ? workshopForm.handlerName.split(',').length === 1
-                          ? `${workshopForm.handlerName} (${workshopForm.handlerEmail})`
+                          ? (() => {
+                              const matched = projectHandlers.find(h => h.email.toLowerCase() === workshopForm.handlerEmail.toLowerCase());
+                              const mobile = matched?.mobileNumber ? ` - Mobile: ${matched.mobileNumber}` : "";
+                              return `${workshopForm.handlerName} (${workshopForm.handlerEmail})${mobile}`;
+                            })()
                           : `${workshopForm.handlerName.split(',').length} Handlers Selected`
                         : "Select Project Handler(s)"}
                     </span>
@@ -2756,6 +2821,49 @@ export function DashboardClient() {
                 {mgmtLoading ? "Saving..." : "Save Slide"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {showMobileModal && (
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto transform transition-all scale-100">
+            <div className="text-center mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Update Your Mobile Number</h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Please provide your mobile number so we can contact you regarding workshop schedules and project updates.
+              </p>
+            </div>
+
+            {mobileError && (
+              <div className="mb-4 bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 p-3 rounded-lg text-xs font-semibold">
+                {mobileError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="e.g. 9876543210"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  className="w-full h-11 px-4 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#12498b] text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveMobile}
+                disabled={savingMobile}
+                className="w-full h-11 bg-[#12498b] hover:bg-[#1858a3] text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer text-sm"
+              >
+                {savingMobile ? "Saving..." : "Save Mobile Number"}
+              </button>
+            </div>
           </div>
         </div>
       )}
