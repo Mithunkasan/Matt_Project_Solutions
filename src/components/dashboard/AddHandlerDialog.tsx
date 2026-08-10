@@ -5,13 +5,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus, Loader2, Mail, User, CheckCircle2, AlertCircle } from "lucide-react";
+import { UserPlus, Loader2, Mail, User, CheckCircle2, AlertCircle, Phone } from "lucide-react";
 
 export function AddHandlerDialog() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -27,6 +28,12 @@ export function AddHandlerDialog() {
       return;
     }
 
+    if (!mobileNumber) {
+      setError("Mobile number is required.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/project-handlers", {
         method: "POST",
@@ -36,6 +43,7 @@ export function AddHandlerDialog() {
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
+          mobileNumber: mobileNumber.trim(),
         }),
       });
 
@@ -45,6 +53,7 @@ export function AddHandlerDialog() {
         setSuccess("Password setup email sent successfully!");
         setName("");
         setEmail("");
+        setMobileNumber("");
         // Wait briefly then close the dialog
         setTimeout(() => {
           setOpen(false);
@@ -67,6 +76,7 @@ export function AddHandlerDialog() {
       // Reset form states when closing
       setName("");
       setEmail("");
+      setMobileNumber("");
       setError("");
       setSuccess("");
     }
@@ -139,6 +149,25 @@ export function AddHandlerDialog() {
                   className="w-full h-11 pl-10 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-teal-600 dark:focus:border-teal-500 focus:ring-teal-600/20 transition-all text-black dark:text-white"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="handlerMobile" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Mobile Number <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <Input
+                  id="handlerMobile"
+                  type="tel"
+                  placeholder="Enter mobile number"
+                  className="w-full h-11 pl-10 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-teal-600 dark:focus:border-teal-500 focus:ring-teal-600/20 transition-all text-black dark:text-white"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
                   required
                   disabled={loading}
                 />

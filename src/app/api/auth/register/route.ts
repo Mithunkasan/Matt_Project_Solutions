@@ -146,6 +146,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
+import { isProjectHandlerEmail } from "@/lib/validation";
 
 // Enhanced email validation
 const isValidEmail = (email: string): boolean => {
@@ -228,9 +229,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if the email belongs to a Project Handler
+    const cleanEmail = email.toLowerCase().trim();
+    if (await isProjectHandlerEmail(cleanEmail)) {
+      return NextResponse.json(
+        { error: "Registration is not allowed using a Project Handler's email address." },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() }
+      where: { email: cleanEmail }
     });
 
     if (existingUser) {

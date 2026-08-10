@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isProjectHandlerEmail } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +14,15 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+
+    // Check if the email belongs to a Project Handler
+    if (await isProjectHandlerEmail(cleanEmail)) {
+      return NextResponse.json({
+        email,
+        allowed: false,
+        error: "Registration is not allowed using a Project Handler's email address."
+      });
+    }
 
     // 1. Check if the user already exists in the users table
     const existingUser = await prisma.user.findUnique({

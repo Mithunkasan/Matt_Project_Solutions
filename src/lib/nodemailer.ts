@@ -293,3 +293,97 @@ export async function sendNotificationEmail(email: string, title: string, messag
     };
   }
 }
+
+export async function sendWorkshopAssignmentEmail(email: string, handlerName: string, workshopDetails: {
+  topic: string;
+  date: string;
+  time: string;
+  college: string;
+  department: string;
+  duration: string;
+}) {
+  try {
+    const transporter = await createTransporter();
+    await transporter.verify();
+
+    const mailOptions = {
+      from: `"Matt Project Solutions" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`,
+      to: email,
+      subject: `New Workshop Assignment: ${workshopDetails.topic}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #12498b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+                .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
+                .detail-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                .detail-table td { padding: 10px; border-bottom: 1px solid #eee; }
+                .detail-table td.label { font-weight: bold; width: 30%; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Workshop Assignment</h1>
+                </div>
+                <div class="content">
+                    <h2>Hello ${handlerName},</h2>
+                    <p>You have been assigned to conduct the following workshop:</p>
+                    
+                    <table class="detail-table">
+                        <tr>
+                            <td class="label">Topic:</td>
+                            <td>${workshopDetails.topic}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Date:</td>
+                            <td>${workshopDetails.date}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Time:</td>
+                            <td>${workshopDetails.time}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">College:</td>
+                            <td>${workshopDetails.college}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Department:</td>
+                            <td>${workshopDetails.department}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Duration:</td>
+                            <td>${workshopDetails.duration}</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="footer">
+                        <p>This is an automated notification. Please log in to your dashboard to view more details.</p>
+                        <p>&copy; ${new Date().getFullYear()} Matt Project Solutions. All rights reserved.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+      `,
+    };
+
+    console.log('Sending workshop assignment email to:', email);
+    const result = await transporter.sendMail(mailOptions);
+    return {
+      success: true,
+      messageId: result.messageId
+    };
+  } catch (error) {
+    console.error('Workshop email sending error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendWorkshopAssignmentEmail } from "@/lib/nodemailer";
 
 function buildWorkshopData(body: Record<string, unknown>) {
   const date = body.date ? new Date(String(body.date)) : null;
@@ -42,11 +43,14 @@ export async function GET() {
     }
 
     const workshops = await prisma.handlerWorkshop.findMany({
-      where: session.user.role === "PROJECT_HANDLER" ? { handlerEmail: session.user.email } : {},
       orderBy: [{ date: "desc" }, { createdAt: "desc" }]
     });
 
-    return NextResponse.json(workshops);
+    const filteredWorkshops = session.user.role === "PROJECT_HANDLER"
+      ? workshops.filter(w => w.handlerEmail.split(',').map(e => e.trim().toLowerCase()).includes(session.user.email.toLowerCase()))
+      : workshops;
+
+    return NextResponse.json(filteredWorkshops);
   } catch (error) {
     console.error("GET workshops error:", error);
     return NextResponse.json({ error: "Failed to fetch workshops" }, { status: 500 });
@@ -62,6 +66,24 @@ export async function POST(request: NextRequest) {
 
     const data = buildWorkshopData(await request.json());
     const workshop = await prisma.handlerWorkshop.create({ data });
+
+    // Send email notification to every assigned handler
+    const emails = data.handlerEmail.split(',').map(e => e.trim().toLowerCase());
+    const names = data.handlerName.split(',').map(n => n.trim());
+    
+    for (let i = 0; i < emails.length; i++) {
+      const email = emails[i];
+      const name = names[i] || names[0] || "Project Handler";
+      
+      sendWorkshopAssignmentEmail(email, name, {
+        topic: data.topic,
+        date: new Date(data.date).toLocaleDateString(),
+        time: data.time,
+        college: data.college,
+        department: data.department,
+        duration: data.duration
+      }).catch(err => console.error("Error sending workshop email notification to:", email, err));
+    }
 
     return NextResponse.json(workshop, { status: 201 });
   } catch (error) {
